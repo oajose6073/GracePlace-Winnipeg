@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request a Ride</title>
+    <link rel="stylesheet" href="../Main_Page/style.css">
+    <link rel="stylesheet" href="ride.css">
+</head>
+<body>
+    <main>
+        <div class="ride-hero">
+            <span class="hero-badge">GracePlace Winnipeg</span>
+            <h1>Request a <em>Ride</em> to Church</h1>
+            <p>No one should miss church because of transportation. Fill out the form below and our team will be in touch.</p>
+        </div>
+ 
+    <!-- FORM SECTION -->
+        <section class="ride-section">
+            <div class="ride-wrap">
+    
+                <!-- Info Cards -->
+                <div class="info-cards">
+                    <div class="info-card">
+                        <div class="info-card-icon"><i data-feather="clock"></i></div>
+                        <div class="info-card-text">
+                            <strong>Submit by Saturday</strong>
+                            <span>Requests must be in before Saturday 5 PM for Sunday pickup.</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i data-feather="map-pin"></i></div>
+                        <div class="info-card-text">
+                            <strong>Winnipeg Only</strong>
+                            <span>We currently serve rides within the Winnipeg area.</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i data-feather="phone"></i></div>
+                        <div class="info-card-text">
+                            <strong>We'll Confirm</strong>
+                            <span>Our team will call or text to confirm your ride details.</span>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Form Card -->
+                <div class="ride-card">
+                    <form id="ride-form" action="" novalidate>
+                        <div class="form-grid">
+    
+                            <p class="form-section-label">Personal Information</p>
+    
+                            <div class="form-group">
+                                <label for="name">Full Name</label>
+                                <input type="text" id="name" name="name" placeholder="John Doe" required>
+                                <span class="error-message" id="name-error">Please enter your name.</span>
+                            </div>
+    
+                            <div class="form-group">
+                                <label for="phone">Phone Number</label>
+                                <input type="tel" id="phone" name="phone" placeholder="(204) 555-0100" required>
+                                <span class="error-message" id="phone-error">Please enter your phone number.</span>
+                            </div>
+    
+                            <div class="form-group full">
+                                <label for="email">Email Address</label>
+                                <input type="email" id="email" name="email" placeholder="john@example.com" required>
+                                <span class="error-message" id="email-error">Please enter a valid email address.</span>
+                            </div>
+    
+                            <div class="form-group full">
+                                <label for="address">Full Pickup Address</label>
+                                <input type="text" id="address" name="address" placeholder="123 Main St, Winnipeg, MB" required>
+                                <span class="error-message" id="address-error">Please enter your pickup address.</span>
+                            </div>
+    
+                            <hr class="form-divider">
+                            <p class="form-section-label">Ride Details</p>
+    
+                            <div class="form-group">
+                                <label for="date">Pickup Date</label>
+                                <input type="date" id="date" name="date" required>
+                                <span class="error-message" id="date-error">Please select a date.</span>
+                            </div>
+    
+                            <div class="form-group">
+                                <label for="time">Pickup Time</label>
+                                <input type="time" id="time" name="time" required>
+                                <span class="error-message" id="time-error">Please select a pickup time.</span>
+                            </div>
+    
+                            <div class="form-group full">
+                                <label>Weekly Recurring Pickup?</label>
+                                <div class="weekly-options">
+                                    <label class="radio-btn" id="weekly-yes">
+                                        <input type="radio" name="weekly" value="yes">
+                                        <i data-feather="repeat"></i>
+                                        Yes, every week
+                                    </label>
+                                    <label class="radio-btn" id="weekly-no">
+                                        <input type="radio" name="weekly" value="no">
+                                        <i data-feather="calendar"></i>
+                                        Just this once
+                                    </label>
+                                </div>
+                                <span class="error-message" id="weekly-error">Please select an option.</span>
+                            </div>
+    
+                            <div class="form-group full">
+                                <label for="notes">Additional Notes <span style="color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
+                                <input type="text" id="notes" name="notes" placeholder="e.g. I use a wheelchair, please bring extra time">
+                            </div>
+    
+                            <div class="form-group full">
+                                <button type="submit" class="submit-btn">
+                                    <i data-feather="send"></i>
+                                    Submit Ride Request
+                                </button>
+                                <p class="form-note">
+                                    Need immediate help? Call us at <a href="tel:2045550192">(204) 555-0192</a><br>
+                                    or email <a href="mailto:hello@graceplaceWinnipeg.ca">hello@graceplaceWinnipeg.ca</a>
+                                </p>
+                            </div>
+    
+                        </div>
+                    </form>
+    
+                    <!-- Success Message -->
+                    <div class="success-msg" id="success-msg">
+                        <div class="success-icon">
+                            <i data-feather="check"></i>
+                        </div>
+                        <h3>Request Received!</h3>
+                        <p>Thank you! Our team will reach out to confirm your ride details shortly. We look forward to seeing you Sunday.</p>
+                        <a href="index.html" class="back-home">Back to Home</a>
+                    </div>
+                </div>
+    
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+     <footer>
+        <div>
+             <div class="social-links">
+                <a href="https://www.facebook.com/graceplacewpg" 
+                    target="_blank" rel="noopener noreferrer"><i data-feather="facebook"></i></a>
+                <a href="https://www.instagram.com/graceplacewpg?igsh=MWNpanhtMmdzcnppdg==" 
+                    target="_blank" rel="noopener noreferrer">
+                    <i data-feather="instagram"></i></a>
+                <a href="https://www.youtube.com/@GracePlaceWinnipeg" 
+                    target="_blank" rel="noopener noreferrer"><i data-feather="youtube"></i></a>
+                <a href="https://t.me/graceplacewinnipeg" 
+                    target="_blank" rel="noopener noreferrer"><i data-feather="send"></i></a>
+            </div>
+        </div>
+        <p>&copy; 2026 <span>GracePlace Winnipeg</span>. All rights reserved. Made with love for our community.</p>
+    </footer>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="ride.js"></script>
+</body>
+</html>
