@@ -26,7 +26,7 @@
         <a href="../Main_Page/main_page.html#contact">Contact</a>
     </nav>
 
-    <a href="../Main_Page/main_page.html#donate" class="nav-give">Give</a>
+    <a href="../Give/give.html" class="nav-give">Give</a>
 </div>
         <div class="ride-hero">
             <span class="hero-badge">GracePlace Winnipeg</span>
@@ -104,9 +104,9 @@
                             </div>
     
                             <div class="form-group">
-                                <label for="time">Pickup Time</label>
-                                <input type="time" id="time" name="time" required>
-                                <span class="error-message" id="time-error">Please select a pickup time.</span>
+                                <label for="time">Number of Passengers</label>
+                                <input type="number" id="number" name="time" min="1" max="10" required>
+                                <span class="error-message" id="time-error">Please enter the number of passengers.</span>
                             </div>
     
                             <div class="form-group full">
@@ -128,7 +128,7 @@
     
                             <div class="form-group full">
                                 <label for="notes">Additional Notes <span style="color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
-                                <input type="text" id="notes" name="notes" placeholder="e.g. I use a wheelchair, please bring extra time">
+                                <input type="text" id="notes" name="notes" placeholder="">
                             </div>
     
                             <div class="form-group full">
