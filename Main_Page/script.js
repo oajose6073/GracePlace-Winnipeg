@@ -111,15 +111,11 @@ async function loadSermons() {
         const grid = document.getElementById('sermons-grid');
         const dotsContainer = document.getElementById('slider-dots');
         
-        console.log('1. loadSermons started');
-        console.log('2. grid found:', grid);
-        console.log('3. dotsContainer found:', dotsContainer);
         // Check if we already have cached sermons
         const cached = sessionStorage.getItem('sermons');
         let items;
 
         if (cached) {
-            console.log('4. Using cached data');
             items = JSON.parse(cached);
         } else {
             console.log('4. Fetching from YouTube API');
@@ -128,7 +124,6 @@ async function loadSermons() {
             const response = await fetch(url);
             const data = await response.json();
 
-            console.log('5. API response:', data);
             
             if (data.error) {
                 console.error('YouTube API error:', data.error.message);
@@ -222,3 +217,63 @@ async function loadSermons() {
 };
 
 loadSermons();
+
+// ── HERO BACKGROUND SLIDESHOW ──
+const heroSlideshow = document.getElementById('hero-slideshow');
+let heroIndex = 0;
+let heroTimer = null;
+let heroSlides = [];
+
+async function loadHeroSlideshow() {
+    console.log('hero slideshow container:', document.getElementById('hero-slideshow'));
+    const response = await fetch('../images/Slide_photos/slides.json');
+    const files = await response.json();
+
+    files.forEach((file, i) => {
+        const ext = file.split('.').pop().toLowerCase();
+        const slide = document.createElement('div');
+        slide.className = i === 0 ? 'hero-slide active' : 'hero-slide';
+
+        if (ext === 'mp4') {
+            const video = document.createElement('video');
+            video.autoplay = true;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            const source = document.createElement('source');
+            source.src = `../images/Slide_photos/${file}`;
+            source.type = 'video/mp4';
+            video.appendChild(source);
+            slide.appendChild(video);
+        } else {
+            const img = document.createElement('img');
+            img.src = `../images/Slide_photos/${file}`;
+            img.alt = 'GracePlace Winnipeg';
+            img.loading = i === 0 ? 'eager' : 'lazy';
+            slide.appendChild(img);
+        }
+
+        heroSlideshow.appendChild(slide);
+        heroSlides.push(slide);
+    });
+
+    startHeroSlideshow();
+}
+
+function goToHeroSlide(index) {
+    if (index >= heroSlides.length) heroIndex = 0;
+    if (index < 0) heroIndex = heroSlides.length - 1;
+    heroSlides.forEach(s => s.classList.remove('active'));
+    heroSlides[heroIndex].classList.add('active');
+}
+
+function startHeroSlideshow() {
+    heroTimer = setInterval(() => {
+        heroIndex++;
+        goToHeroSlide(heroIndex);
+    }, 5000);
+}
+
+loadHeroSlideshow();
+
+
