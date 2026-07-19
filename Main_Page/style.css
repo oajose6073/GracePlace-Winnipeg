@@ -113,7 +113,8 @@ img { display: block; max-width: 100%; }
 /* ── HERO ── */
 #hero {
     position: relative;
-    min-height: 520px;
+    height: 100vh;
+    min-height: 600px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     text-align: center;
@@ -121,7 +122,6 @@ img { display: block; max-width: 100%; }
     overflow: hidden;
 }
 
-/* Remove the old ::before gradient since overlay handles it now */
 #hero::before { display: none; }
 
 .hero-slideshow {
@@ -144,22 +144,20 @@ img { display: block; max-width: 100%; }
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
+    object-position: center center;
     display: block;
 }
 
-/* Dark overlay so text stays readable */
 .hero-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(26, 43, 74, 0.65);
+    background: rgba(26, 43, 74, 0.55);
     z-index: 1;
 }
 
-/* All hero content sits above the overlay */
 #hero .hero-badge,
 #hero h1,
-#hero p,
+#hero > p,
 #hero .hero-btns,
 #hero .service-bar {
     position: relative;
