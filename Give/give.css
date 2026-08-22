@@ -1,0 +1,222 @@
+/* ── GIVE HERO ── */
+        .give-hero {
+            background: var(--navy);
+            padding: 4rem 2rem 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .give-hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse 60% 60% at 50% 0%, rgba(221,161,59,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .give-hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 500; color: white;
+            line-height: 1.2; margin-bottom: 0.75rem;
+        }
+        .give-hero h1 em { color: var(--gold); font-style: italic; }
+        .give-hero p {
+            color: rgba(255,255,255,0.6);
+            font-size: 16px; max-width: 500px;
+            margin: 0 auto;
+        }
+ 
+        /* ── GIVE SECTION ── */
+        .give-section {
+            padding: 4rem 2rem;
+            background: var(--cream);
+        }
+ 
+        .give-wrap {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+ 
+        /* ── SCRIPTURE STRIP ── */
+        .scripture-strip {
+            background: var(--navy);
+            border-radius: 12px;
+            padding: 1.75rem 2rem;
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .scripture-strip p {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-style: italic;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.7;
+            margin-bottom: 0.5rem;
+        }
+        .scripture-strip span {
+            font-size: 13px;
+            color: var(--gold);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+ 
+        /* ── WAYS TO GIVE ── */
+        .ways-title {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+ 
+        .give-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 3rem;
+        }
+ 
+        .give-card {
+            background: var(--white);
+            border: 0.5px solid var(--border);
+            border-radius: 14px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+ 
+        .give-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+        }
+ 
+        .give-card-icon {
+            width: 56px; height: 56px;
+            border-radius: 14px;
+            background: var(--gold-pale);
+            border: 1px solid rgba(221,161,59,0.2);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+        }
+ 
+        .give-card-icon svg {
+            width: 24px; height: 24px;
+            stroke: var(--gold); fill: none; stroke-width: 1.8;
+        }
+ 
+        .give-card h3 {
+            font-family: var(--font-display);
+            font-size: 20px; font-weight: 500;
+            color: var(--ink); margin-bottom: 0.5rem;
+        }
+ 
+        .give-card p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.65;
+            margin-bottom: 1.25rem;
+        }
+ 
+        .give-card .give-email {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--gold-pale);
+            border: 1px solid rgba(221,161,59,0.25);
+            color: var(--gold);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: var(--radius-pill);
+            transition: background 0.15s;
+            word-break: break-all;
+        }
+ 
+        .give-card .give-email:hover {
+            background: var(--gold-light);
+        }
+ 
+        .give-card .give-email svg {
+            width: 14px; height: 14px;
+            stroke: var(--gold); fill: none; stroke-width: 2;
+            flex-shrink: 0;
+        }
+ 
+        .give-card .in-person-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--muted);
+            justify-content: center;
+        }
+ 
+        .give-card .in-person-detail svg {
+            width: 14px; height: 14px;
+            stroke: var(--gold); fill: none; stroke-width: 2;
+        }
+ 
+        .give-card .canadahelps-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--navy);
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 11px 22px;
+            border-radius: var(--radius-pill);
+            transition: transform 0.15s, box-shadow 0.15s;
+            font-family: var(--font-body);
+        }
+
+        .give-card .canadahelps-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(36,28,74,0.25); }
+        .give-card .canadahelps-btn svg {
+            width: 16px; height: 16px;
+            stroke: white; fill: none; stroke-width: 2;
+        }
+ 
+        /* ── COPY BUTTON ── */
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-body);
+            padding: 0;
+        }
+ 
+        .copy-confirm {
+            font-size: 11px;
+            color: var(--gold);
+            margin-top: 6px;
+            display: none;
+        }
+ 
+        /* ── NOTE ── */
+        .give-note {
+            background: var(--white);
+            border: 0.5px solid var(--border);
+            border-left: 3px solid var(--gold);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+ 
+        .give-note svg {
+            width: 18px; height: 18px;
+            stroke: var(--gold); fill: none; stroke-width: 2;
+            flex-shrink: 0; margin-top: 2px;
+        }
+ 
+        .give-note p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+ 
+        .give-note strong { color: var(--ink); font-weight: 500; }
+ 
+        @media (max-width: 600px) {
+            .give-grid { grid-template-columns: 1fr; }
+        }
