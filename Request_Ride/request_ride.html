@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Request a Ride</title>
+    <script>
+        // Applied before first paint so there's no flash of the wrong theme.
+        (function () {
+            try {
+                var t = localStorage.getItem('gp-theme');
+                if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            } catch (e) {}
+        })();
+    </script>
+    <title>Request a Ride - GracePlace Winnipeg</title>
+    <meta name="description" content="Request a ride to GracePlace Winnipeg. No one should miss church because of transportation — fill out our simple ride request form.">
+    <link rel="icon" href="../images/Graceplace.jpeg" type="image/jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500&display=swap">
     <link rel="stylesheet" href="../Main_Page/style.css">
     <link rel="stylesheet" href="ride.css">
 </head>
@@ -20,11 +35,23 @@
         </div>
     </div>
 
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
     <nav class="nav-menu" id="nav-menu">
         <a href="../Main_Page/main_page.html#sermons">Sermons</a>
         <a href="../Main_Page/main_page.html#anthem">About Us</a>
         <a href="../Main_Page/main_page.html#contact">Contact</a>
     </nav>
+
+    <button type="button" class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode">
+        <span class="theme-toggle-icon theme-toggle-icon--sun"><i data-feather="sun"></i></span>
+        <span class="theme-toggle-icon theme-toggle-icon--moon"><i data-feather="moon"></i></span>
+        <span class="theme-toggle-thumb" aria-hidden="true"></span>
+    </button>
 
     <a href="../Give/give.html" class="nav-give">Give</a>
 </div>
@@ -39,7 +66,7 @@
             <div class="ride-wrap">
     
                 <!-- Info Cards -->
-                <div class="info-cards">
+                <div class="info-cards reveal">
                     <div class="info-card">
                         <div class="info-card-icon"><i data-feather="clock"></i></div>
                         <div class="info-card-text">
@@ -64,7 +91,7 @@
                 </div>
     
                 <!-- Form Card -->
-                <div class="ride-card">
+                <div class="ride-card reveal">
                     <form id="ride-form" action="" novalidate>
                         <div class="form-grid">
     
@@ -138,7 +165,7 @@
                                 </button>
                                 <p class="form-note">
                                     Need immediate help? Call us at <a href="tel:2045550192">(204) 555-0192</a><br>
-                                    or email <a href="mailto:hello@graceplaceWinnipeg.ca">hello@graceplaceWinnipeg.ca</a>
+                                    or email <a href="mailto:graceplacewpg@gmail.com">graceplacewpg@gmail.com</a>
                                 </p>
                             </div>
     
@@ -152,7 +179,7 @@
                         </div>
                         <h3>Request Received!</h3>
                         <p>Thank you! Our team will reach out to confirm your ride details shortly. We look forward to seeing you Sunday.</p>
-                        <a href="index.html" class="back-home">Back to Home</a>
+                        <a href="../Main_Page/main_page.html" class="back-home">Back to Home</a>
                     </div>
                 </div>
     
@@ -164,20 +191,23 @@
      <footer>
         <div>
              <div class="social-links">
-                <a href="https://www.facebook.com/graceplacewpg" 
+                <a href="https://www.facebook.com/graceplacewpg" aria-label="Facebook"
                     target="_blank" rel="noopener noreferrer"><i data-feather="facebook"></i></a>
-                <a href="https://www.instagram.com/graceplacewpg?igsh=MWNpanhtMmdzcnppdg==" 
+                <a href="https://www.instagram.com/graceplacewpg?igsh=MWNpanhtMmdzcnppdg==" aria-label="Instagram"
                     target="_blank" rel="noopener noreferrer">
                     <i data-feather="instagram"></i></a>
-                <a href="https://www.youtube.com/@GracePlaceWinnipeg" 
+                <a href="https://www.youtube.com/@GracePlaceWinnipeg" aria-label="YouTube"
                     target="_blank" rel="noopener noreferrer"><i data-feather="youtube"></i></a>
-                <a href="https://t.me/graceplacewinnipeg" 
+                <a href="https://t.me/graceplacewinnipeg" aria-label="Telegram"
                     target="_blank" rel="noopener noreferrer"><i data-feather="send"></i></a>
             </div>
         </div>
         <p>&copy; 2026 <span>GracePlace Winnipeg</span>. All rights reserved. Made with love for our community.</p>
     </footer>
     <script src="https://unpkg.com/feather-icons"></script>
+    <script src="../Main_Page/nav.js"></script>
+    <script src="../Main_Page/reveal.js"></script>
+    <script src="../Main_Page/theme-toggle.js"></script>
     <script src="ride.js"></script>
 </body>
 </html>
