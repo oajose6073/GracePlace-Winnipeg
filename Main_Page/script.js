@@ -2,22 +2,7 @@ import { CONFIG } from '../config.js';
 
 feather.replace();
 
-// Hamburger Menu Toggle
-const hamburger = document.getElementById('hamburger');
-const navMenu = document.getElementById('nav-menu');
-
-hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('active');
-    navMenu.classList.toggle('active');
-});
-
-// Close menu when a link is clicked
-navMenu.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-        hamburger.classList.remove('active');
-        navMenu.classList.remove('active');
-    });
-});
+// Hamburger menu toggle lives in nav.js (shared across all pages)
 
 const contactForm = document.querySelector('.contact-form');
 
@@ -268,6 +253,9 @@ function goToHeroSlide(index) {
 }
 
 function startHeroSlideshow() {
+    // Respect users who've asked for reduced motion: show the first slide, don't auto-advance.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     heroTimer = setInterval(() => {
         heroIndex++;
         goToHeroSlide(heroIndex);
