@@ -3,7 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Applied before first paint so there's no flash of the wrong theme.
+        (function () {
+            try {
+                var t = localStorage.getItem('gp-theme');
+                if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            } catch (e) {}
+        })();
+    </script>
     <title>GracePlace Winnipeg</title>
+    <meta name="description" content="GracePlace Winnipeg is a vibrant church family in Winnipeg, MB rooted in faith, growing in the word, and flowing in the Spirit. Join us Sundays at 4:00 PM.">
+    <meta property="og:title" content="GracePlace Winnipeg">
+    <meta property="og:description" content="A place where we prioritize growing in the word and flowing in the spirit. Join us Sundays at 4:00 PM.">
+    <meta property="og:image" content="../images/Graceplace.jpeg">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="../images/Graceplace.jpeg" type="image/jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500&display=swap">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,7 +39,7 @@
                 </div>
             </div>
 
-            <button class="hamburger" id="hamburger">
+            <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-menu">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -36,6 +55,12 @@
                 <a href="../Request_Ride/request_ride.html">Request Ride</a>
             </nav>
 
+            <button type="button" class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode">
+                <span class="theme-toggle-icon theme-toggle-icon--sun"><i data-feather="sun"></i></span>
+                <span class="theme-toggle-icon theme-toggle-icon--moon"><i data-feather="moon"></i></span>
+                <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            </button>
+
             <a href="../Give/give.html" class="nav-give">Give</a>
         </div>
 
@@ -44,6 +69,9 @@
             <!-- Background slideshow -->
             <div class="hero-slideshow" id="hero-slideshow"></div>
             <div class="hero-overlay"></div>
+            <div class="hero-orb hero-orb--1" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb--2" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb--3" aria-hidden="true"></div>
 
             <span class="hero-badge"></span>
             <h1>Welcome to <em>GracePlace</em> Winnipeg</h1>
@@ -66,14 +94,32 @@
             </div>
         </section>
 
+        <!-- Ticker -->
+        <div class="ticker" aria-hidden="true">
+            <div class="ticker-track">
+                <span class="ticker-item">Sundays 4:00 PM — Main Service</span>
+                <span class="ticker-item">Wednesdays 6:30 PM — Bible Study (Online)</span>
+                <span class="ticker-item">Growing in the Word, Flowing in the Spirit</span>
+                <span class="ticker-item">50 Scurfield Blvd, Winnipeg</span>
+                <span class="ticker-item">Sundays 4:00 PM — Main Service</span>
+                <span class="ticker-item">Wednesdays 6:30 PM — Bible Study (Online)</span>
+                <span class="ticker-item">Growing in the Word, Flowing in the Spirit</span>
+                <span class="ticker-item">50 Scurfield Blvd, Winnipeg</span>
+            </div>
+        </div>
+
         <!-- ANTHEM / ABOUT -->
         <section id="anthem">
             <div class="section-wrap">
                 <div class="anthem-grid">
-                    <div class="anthem-image">
-                        <i data-feather="plus" style="width:64px;height:64px;stroke:var(--gold);opacity:0.4;"></i>
+                    <div class="anthem-image reveal">
+                        <div class="anthem-collage">
+                            <div class="collage-orb" aria-hidden="true"></div>
+                            <img class="photo-back" src="../images/Slide_photos/IMG_2068.JPG" alt="GracePlace members gathered together during a service">
+                            <img class="photo-front" src="../images/Slide_photos/IMG_9858.JPG" alt="A GracePlace member leading worship">
+                        </div>
                     </div>
-                    <div>
+                    <div class="reveal">
                         <p class="section-label">GracePlace Anthem</p>
                         <h2 class="section-title">This is GracePlace</h2>
                         <p class="section-sub">A vibrant church family rooted in faith, committed to knowing God, growing together, and serving one another.</p>
@@ -108,9 +154,11 @@
         <!-- Sermons Section -->
          <section id="sermons">
             <div class="section-wrap">
-                <p class="section-label">Sermons</p>
-                <h2 class="section-title">Latest Sermons</h2>
-                <p class="section-sub">Dive into our recent teachings and grow in faith.</p>
+                <div class="reveal">
+                    <p class="section-label">Sermons</p>
+                    <h2 class="section-title">Latest Sermons</h2>
+                    <p class="section-sub">Dive into our recent teachings and grow in faith.</p>
+                </div>
                 <div class="sermons-slider" id="sermons-slider">
                     <div class="sermons-grid" id="sermons-grid"></div>
                 </div>
@@ -121,10 +169,12 @@
         <!-- Upcoming Events -->
          <section id="events">
             <div class="section-wrap">
-                <p class="section-label">What's On</p>
-                <h2 class="section-title">Upcoming Events</h2>
-                <p class="section-sub">Stay connected with us on whats happening at GracePlace</p>
-                <div class="events-grid">
+                <div class="reveal">
+                    <p class="section-label">What's On</p>
+                    <h2 class="section-title">Upcoming Events</h2>
+                    <p class="section-sub">Stay connected with us on whats happening at GracePlace</p>
+                </div>
+                <div class="events-grid reveal">
                     <div class="event-card">
                         <h3>Event 1</h3>
                         <p>Date: TBD</p>
@@ -137,9 +187,11 @@
         <!-- Contact Section -->
          <section id="contact">
             <div class="section-wrap">
-                <p class="section-label">Get in Touch</p>
-                <h2 class="section-title">Contact Us</h2>
-                <p class="section-sub">We'd love to hear from you — whether it's a question, prayer request, or just saying hello.</p>
+                <div class="reveal">
+                    <p class="section-label">Get in Touch</p>
+                    <h2 class="section-title">Contact Us</h2>
+                    <p class="section-sub">We'd love to hear from you — whether it's a question, prayer request, or just saying hello.</p>
+                </div>
                 <div class="contact-grid">
                     <div class="contact-info">
                         <div class="contact-item">
@@ -165,9 +217,12 @@
                         </div>
                     </div>
                     <form class="contact-form" action="https://httpbin.org/post" method="POST">
-                        <input type="text" id="name" placeholder="Your name" />
-                        <input type="email" id="email" placeholder="Email address" />
-                        <textarea id="message" placeholder="Your message..."></textarea>
+                        <label class="sr-only" for="name">Your name</label>
+                        <input type="text" id="name" name="name" placeholder="Your name" required />
+                        <label class="sr-only" for="email">Email address</label>
+                        <input type="email" id="email" name="email" placeholder="Email address" required />
+                        <label class="sr-only" for="message">Your message</label>
+                        <textarea id="message" name="message" placeholder="Your message..."></textarea>
                         <button type="submit">Send Message</button>
                     </form>
                 </div>
@@ -179,20 +234,23 @@
      <footer>
         <div>
              <div class="social-links">
-                <a href="https://www.facebook.com/graceplacewpg" 
+                <a href="https://www.facebook.com/graceplacewpg" aria-label="Facebook"
                     target="_blank" rel="noopener noreferrer"><i data-feather="facebook"></i></a>
-                <a href="https://www.instagram.com/graceplacewpg?igsh=MWNpanhtMmdzcnppdg==" 
+                <a href="https://www.instagram.com/graceplacewpg?igsh=MWNpanhtMmdzcnppdg==" aria-label="Instagram"
                     target="_blank" rel="noopener noreferrer">
                     <i data-feather="instagram"></i></a>
-                <a href="https://www.youtube.com/@GracePlaceWinnipeg" 
+                <a href="https://www.youtube.com/@GracePlaceWinnipeg" aria-label="YouTube"
                     target="_blank" rel="noopener noreferrer"><i data-feather="youtube"></i></a>
-                <a href="https://t.me/graceplacewinnipeg" 
+                <a href="https://t.me/graceplacewinnipeg" aria-label="Telegram"
                     target="_blank" rel="noopener noreferrer"><i data-feather="send"></i></a>
             </div>
         </div>
         <p>&copy; 2026 <span>GracePlace Winnipeg</span>. All rights reserved. Made with love for our community.</p>
     </footer>
     <script src="https://unpkg.com/feather-icons"></script>
+    <script src="nav.js"></script>
+    <script src="reveal.js"></script>
+    <script src="theme-toggle.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
