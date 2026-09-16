@@ -1,0 +1,173 @@
+/* Scan only the app's own source. Auto-detection would also crawl the
+   `daisyui/` skill docs at the repo root and emit a utility for every class
+   name mentioned in their examples, which bloats the stylesheet ~10x. */
+@import "tailwindcss" source(none);
+@source "../index.html";
+@source "./**/*.{ts,tsx}";
+
+@plugin "daisyui";
+
+/* ── GracePlace themes ──
+   The brand is navy + gold. Only the page canvas, card surfaces and body
+   text flip between themes — `neutral` is identical in both, because the
+   nav bar, footer and hero are designed dark in light mode *and* dark mode. */
+
+@plugin "daisyui/theme" {
+  name: "graceplace";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: #faf8f4;
+  --color-base-200: #f2eee4;
+  --color-base-300: #e5ded0;
+  --color-base-content: #1f1c2e;
+  --color-primary: #dda13b;
+  --color-primary-content: #1b1338;
+  --color-secondary: #241c4a;
+  --color-secondary-content: #faf8f4;
+  --color-accent: #423776;
+  --color-accent-content: #f5e6c8;
+  --color-neutral: #120c2e;
+  --color-neutral-content: #ede9f9;
+  --color-info: #3c6e91;
+  --color-info-content: #f2f8fb;
+  --color-success: #3f7d55;
+  --color-success-content: #f2f9f4;
+  --color-warning: #b5791f;
+  --color-warning-content: #fdf7ec;
+  --color-error: #a83a2c;
+  --color-error-content: #fdf3f1;
+
+  --radius-selector: 999rem;
+  --radius-field: 999rem;
+  --radius-box: 1rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "graceplacedark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+
+  --color-base-100: #14102c;
+  --color-base-200: #1e1840;
+  --color-base-300: #2a2154;
+  --color-base-content: #ede9f9;
+  --color-primary: #e3ae52;
+  --color-primary-content: #120c2e;
+  --color-secondary: #c9bff0;
+  --color-secondary-content: #120c2e;
+  --color-accent: #8b7bd0;
+  --color-accent-content: #120c2e;
+  --color-neutral: #120c2e;
+  --color-neutral-content: #ede9f9;
+  --color-info: #7fb4d4;
+  --color-info-content: #0d1a22;
+  --color-success: #7fc196;
+  --color-success-content: #0d1a11;
+  --color-warning: #e0b464;
+  --color-warning-content: #1f1508;
+  --color-error: #e3897c;
+  --color-error-content: #2a0d08;
+
+  --radius-selector: 999rem;
+  --radius-field: 999rem;
+  --radius-box: 1rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+
+  --depth: 0;
+  --noise: 0;
+}
+
+@theme {
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --animate-ticker: gp-ticker 38s linear infinite;
+  --animate-orb: gp-orb 7s ease-in-out infinite;
+  --animate-rise: gp-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes gp-ticker {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  @keyframes gp-orb {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-22px) scale(1.15); }
+  }
+  @keyframes gp-rise {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* `ink` is the "heading on a page surface" role. It stays navy on the cream
+   canvas and goes near-white in the dark theme — kept separate from
+   `neutral`, which brands the always-dark chrome in both themes. */
+[data-theme="graceplace"]     { --gp-ink: #241c4a; }
+[data-theme="graceplacedark"] { --gp-ink: #f3effb; }
+
+@utility text-ink { color: var(--gp-ink); }
+
+html {
+  scroll-behavior: smooth;
+  /* Offset in-page anchors so the sticky nav never covers a section heading. */
+  scroll-padding-top: 5.5rem;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.7;
+}
+
+/* Scroll-reveal: set by the useReveal hook once an element enters view. */
+.gp-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.gp-reveal[data-visible="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hero slideshow: slow cross-fade with a gentle drift on the active frame. */
+.gp-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.4s ease-in-out;
+}
+.gp-slide[data-active="true"] { opacity: 1; }
+.gp-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.06);
+  transition: transform 7s ease-out;
+}
+.gp-slide[data-active="true"] img { transform: scale(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .gp-reveal { opacity: 1; transform: none; transition: none; }
+  .gp-slide img { transform: none; transition: none; }
+  .gp-slide { transition: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
