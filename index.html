@@ -1,13 +1,46 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="graceplace">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>graceplace</title>
+    <script>
+      // Applied before first paint so there's no flash of the wrong theme.
+      // Stores the same 'light' / 'dark' values the pre-React site used, so a
+      // returning visitor keeps the theme they already chose.
+      (function () {
+        try {
+          var t = localStorage.getItem('gp-theme');
+          if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.setAttribute(
+            'data-theme',
+            t === 'dark' ? 'graceplacedark' : 'graceplace'
+          );
+        } catch (e) {}
+      })();
+    </script>
+    <title>GracePlace Winnipeg</title>
+    <meta
+      name="description"
+      content="GracePlace Winnipeg is a vibrant church family in Winnipeg, MB rooted in faith, growing in the word, and flowing in the Spirit. Join us Sundays at 4:00 PM."
+    />
+    <meta property="og:title" content="GracePlace Winnipeg" />
+    <meta
+      property="og:description"
+      content="A place where we prioritize growing in the word and flowing in the spirit. Join us Sundays at 4:00 PM."
+    />
+    <meta property="og:image" content="/images/Graceplace.jpeg" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#120c2e" />
+    <link rel="icon" href="/images/Graceplace.jpeg" type="image/jpeg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+    />
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
