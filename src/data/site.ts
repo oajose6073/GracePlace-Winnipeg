@@ -14,8 +14,8 @@ export const church = {
   fullName: "GracePlace Winnipeg",
   tagline: "A place where we prioritize growing in the word and flowing in the spirit.",
   address: {
-    street: "50 Scurfield Blvd",
-    region: "Winnipeg, MB R3C 1A1",
+    street: "1150 Waverley Street",
+    region: "Winnipeg, MB",
   },
   phone: "(204) 555-0192",
   phoneHref: "tel:2045550192",
@@ -85,7 +85,7 @@ export const tickerItems = [
   "Sundays 4:00 PM — Main Service",
   "Wednesdays 6:30 PM — Bible Study (Online)",
   "Growing in the Word, Flowing in the Spirit",
-  "50 Scurfield Blvd, Winnipeg",
+  "1150 Waverley Street, Winnipeg",
 ] as const;
 
 export const rideInfo = [
