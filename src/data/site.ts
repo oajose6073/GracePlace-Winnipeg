@@ -17,8 +17,8 @@ export const church = {
     street: "1150 Waverley Street",
     region: "Winnipeg, MB",
   },
-  phone: "(204) 555-0192",
-  phoneHref: "tel:2045550192",
+  phone: "(204) 952-1997",
+  phoneHref: "tel:+12049521997",
   email: "graceplacewpg@gmail.com",
   logo: asset("images/Graceplace.jpeg"),
 } as const;

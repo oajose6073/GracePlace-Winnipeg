@@ -71,7 +71,9 @@ export default function Ask() {
           </>
         }
       >
-        Something from the current sermon series on your mind? Send it in. Your name is optional.
+        {currentSeries
+          ? "Something from the current sermon series on your mind? Send it in. Your name is optional."
+          : "Have a question about a sermon series? This is where you can send it in."}
       </PageHero>
 
       <section className="px-5 py-16 sm:px-8 sm:py-20">
