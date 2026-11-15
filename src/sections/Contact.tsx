@@ -13,7 +13,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function Contact() {
   const [values, setValues] = useState({ name: "", email: "", message: "" });
   const [errors, setErrors] = useState<Errors>({});
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "emailed" | "failed">(
+    "idle",
+  );
 
   const update =
     (field: Field) =>
@@ -44,11 +46,17 @@ export function Contact() {
 
     setStatus("sending");
     try {
-      await submitForm(`Website message from ${values.name}`, {
+      const result = await submitForm(`Website message from ${values.name}`, {
         Name: values.name,
         Email: values.email,
         Message: values.message,
       });
+      // In email mode nothing has been delivered yet, so keep what they typed
+      // in case their mail app did not open.
+      if (result === "email-fallback") {
+        setStatus("emailed");
+        return;
+      }
       setStatus("sent");
       setValues({ name: "", email: "", message: "" });
     } catch (error) {
@@ -125,7 +133,36 @@ export function Contact() {
           </Reveal>
 
           <Reveal>
-            {status === "sent" ? (
+            {status === "emailed" ? (
+              <div
+                role="status"
+                className="card h-full border border-primary/25 bg-base-100 text-center"
+              >
+                <div className="card-body items-center justify-center gap-3 p-10">
+                  <span className="flex size-14 items-center justify-center rounded-full bg-primary/12 text-primary">
+                    <Mail className="size-7" strokeWidth={1.75} />
+                  </span>
+                  <h3 className="font-display text-2xl font-medium text-ink">
+                    Almost there — press send
+                  </h3>
+                  <p className="max-w-sm text-[15px] text-base-content/65">
+                    Your email app should have opened with your message ready to go. It reaches us
+                    once you press send there. If nothing opened, email us at{" "}
+                    <a className="link text-primary" href={`mailto:${church.email}`}>
+                      {church.email}
+                    </a>
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setStatus("idle")}
+                    className="btn btn-ghost btn-sm mt-2"
+                  >
+                    Back to the form
+                  </button>
+                </div>
+              </div>
+            ) : status === "sent" ? (
               <div
                 role="status"
                 className="card h-full border border-primary/25 bg-base-100 text-center"

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Calendar, CheckCircle2, Clock, MapPin, Phone, Repeat, Send } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Mail, MapPin, Phone, Repeat, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHero } from "../components/PageHero";
 import { Reveal } from "../components/Reveal";
@@ -30,7 +30,9 @@ const today = new Date().toISOString().slice(0, 10);
 export default function RequestRide() {
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "emailed" | "failed">(
+    "idle",
+  );
 
   useEffect(() => {
     document.title = "Request a Ride — GracePlace Winnipeg";
@@ -76,7 +78,7 @@ export default function RequestRide() {
 
     setStatus("sending");
     try {
-      await submitForm(`Ride request from ${values.name}`, {
+      const result = await submitForm(`Ride request from ${values.name}`, {
         Name: values.name,
         Phone: values.phone,
         Email: values.email,
@@ -86,7 +88,7 @@ export default function RequestRide() {
         "Weekly recurring": values.weekly === "yes" ? "Yes, every week" : "Just this once",
         Notes: values.notes,
       });
-      setStatus("sent");
+      setStatus(result === "email-fallback" ? "emailed" : "sent");
     } catch (error) {
       console.error(error);
       setStatus("failed");
@@ -133,7 +135,37 @@ export default function RequestRide() {
           </Reveal>
 
           <Reveal className="mt-10">
-            {status === "sent" ? (
+            {status === "emailed" ? (
+              <div role="status" className="card border border-primary/25 bg-base-200 text-center">
+                <div className="card-body items-center gap-3 p-10 sm:p-14">
+                  <span className="flex size-16 items-center justify-center rounded-full bg-primary/12 text-primary">
+                    <Mail className="size-8" strokeWidth={1.5} />
+                  </span>
+                  <h2 className="font-display text-3xl font-medium text-ink">
+                    Almost there — press send
+                  </h2>
+                  <p className="max-w-md text-[15px] text-base-content/65">
+                    Your email app should have opened with your ride request filled in. It reaches
+                    our team once you press send there. If nothing opened, call us at{" "}
+                    <a className="link text-primary" href={church.phoneHref}>
+                      {church.phone}
+                    </a>{" "}
+                    or email{" "}
+                    <a className="link text-primary" href={`mailto:${church.email}`}>
+                      {church.email}
+                    </a>
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setStatus("idle")}
+                    className="btn btn-ghost btn-sm mt-3"
+                  >
+                    Back to the form
+                  </button>
+                </div>
+              </div>
+            ) : status === "sent" ? (
               <div
                 role="status"
                 className="card border border-primary/25 bg-base-200 text-center"
