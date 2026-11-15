@@ -42,7 +42,7 @@ export const navLinks = [
  * the `series` column. While it is an empty string the Ask page tells visitors
  * questions will open with the next series instead of showing the form.
  */
-export const currentSeries = "";
+export const currentSeries = "Handling Wrongs By Love";
 
 /** Longest question the Ask page accepts, in characters. */
 export const questionMaxLength = 1000;
