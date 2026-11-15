@@ -3,8 +3,8 @@
  * content can be updated without touching component code.
  */
 
-/** Prefixes a `public/` path with the deploy base (GitHub Pages serves the
- *  site from a subdirectory, so bare absolute paths would 404). */
+/** Prefixes a `public/` path with Vite's `base` ("/" on Netlify), so assets
+ *  keep working if the site is ever served from a subdirectory. */
 export const asset = (path: string) =>
   `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
 

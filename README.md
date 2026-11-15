@@ -19,12 +19,13 @@ npm run dev        # http://localhost:5173
 
 ## Configuration
 
-Copy `.env.example` to `.env.local` and fill in what you need. Everything is
-optional — the site works without any of it, it just does less.
+Copy `.env.example` to `.env` (gitignored) and fill in what you need. The
+site builds without any of it, it just does less.
 
 | Variable | Without it |
 | --- | --- |
 | `VITE_YOUTUBE_API_KEY`, `VITE_YOUTUBE_CHANNEL_ID` | The Sermons section links to the YouTube channel instead of listing recent videos. |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | The Ask a Question page cannot save questions; submitting shows an error with the church email instead. Use the publishable key, never the secret one. |
 | `VITE_FORM_ENDPOINT` | The contact and ride forms open a pre-filled email to the church instead of posting to a form backend. |
 
 Anything prefixed `VITE_` is compiled into the public JavaScript bundle and is
@@ -56,7 +57,7 @@ src/
   lib/              theme, scroll reveal, slideshow, sermons, form submission
   components/       nav, footer, layout and shared pieces
   sections/         the home page sections
-  pages/            Home, Give, Request a Ride, 404
+  pages/            Home, Give, Request a Ride, Ask a Question, 404
   index.css         Tailwind entry, daisyUI themes, keyframes
 ```
 
@@ -79,15 +80,21 @@ the wrong theme.
 
 ## Deployment
 
-Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml),
-which builds the site and publishes `dist/` to GitHub Pages. Set `API_KEY`,
-`CHANNEL_ID` and `FORM_ENDPOINT` as repository secrets to have them compiled in.
+The site is hosted on Netlify at graceplacewpg.ca. [`netlify.toml`](netlify.toml)
+sets the build (`npm run build`, publishing `dist/`, Node 22) and rewrites
+every path to `index.html`, so a direct link to `/give` or `/ask` loads the
+app and React Router renders the page.
 
-The site is served from a project page, so `vite.config.ts` sets
-`base: "/GracePlace-Winnipeg/"` for production builds. **If the repository is
-ever renamed, that string has to change with it.** The build also writes a
-`404.html` copy of the app shell, which is what makes a direct link to
-`/give` work on GitHub Pages.
+Set the variables from the table above in Netlify under **Site configuration
+> Environment variables**. They are compiled in at build time, so after
+changing one, trigger a new deploy.
+
+## Changing the sermon series
+
+The Ask a Question page files every question under `currentSeries` in
+[`src/data/site.ts`](src/data/site.ts). When a new series starts, change that
+string and commit. While it is an empty string the page shows a "questions
+open with the next series" message instead of the form.
 
 ## Accessibility notes
 

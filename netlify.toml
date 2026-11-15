@@ -1,0 +1,20 @@
+# Netlify build settings for graceplacewpg.ca.
+# Environment variables (VITE_*) are set in the Netlify UI, not here:
+# Site configuration > Environment variables. See README.md for the list.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 8 needs Node 20.19+ or 22.12+.
+  NODE_VERSION = "22"
+
+# The app uses client-side routing (React Router), so a direct visit to
+# /give, /request-ride or /ask has no file to match. Serve the app shell and
+# let the router render the page. Real files (assets, images) still win,
+# because Netlify only applies this rule when no file exists at the path.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
