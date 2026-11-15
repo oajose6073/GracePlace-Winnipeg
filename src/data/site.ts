@@ -33,7 +33,19 @@ export const navLinks = [
   { label: "About Us", to: "/#anthem" },
   { label: "Contact", to: "/#contact" },
   { label: "Request Ride", to: "/request-ride" },
+  { label: "Ask a Question", to: "/ask" },
 ] as const;
+
+/**
+ * The sermon series that questions on the Ask page are filed under. Change it
+ * when a new series starts; every question is saved with this exact text in
+ * the `series` column. While it is an empty string the Ask page tells visitors
+ * questions will open with the next series instead of showing the form.
+ */
+export const currentSeries = "";
+
+/** Longest question the Ask page accepts, in characters. */
+export const questionMaxLength = 1000;
 
 export const socials = [
   { label: "Facebook", href: "https://www.facebook.com/graceplacewpg", icon: "facebook" },

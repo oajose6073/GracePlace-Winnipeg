@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import Ask from "./pages/Ask";
 import Give from "./pages/Give";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
@@ -12,6 +13,7 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="give" element={<Give />} />
         <Route path="request-ride" element={<RequestRide />} />
+        <Route path="ask" element={<Ask />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
