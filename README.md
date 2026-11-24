@@ -63,6 +63,7 @@ src/
 supabase/
   migrations/       SQL for the series, admins and row-level security
   tests/            access test for those rules (run in the SQL editor)
+  functions/        notify-question Edge Function (question emails)
 ```
 
 ### Theming
@@ -151,6 +152,37 @@ active series. The admin page only decides what to show.
 [`supabase/tests/admin_access.test.sql`](supabase/tests/admin_access.test.sql)
 checks these rules; run it in the SQL editor after any policy change (it rolls
 back everything it creates and reports the result as an error message).
+
+## Question emails
+
+When someone asks a question, the pastors get an email. A Supabase Database
+Webhook on `INSERT` into `public.series_questions` calls the Edge Function
+[`supabase/functions/notify-question`](supabase/functions/notify-question/),
+which looks the question and its series up with the service role key and
+sends one email through Resend (reply-to `graceplacewpg@gmail.com`).
+
+- The webhook runs after the insert has committed, so a failed or slow email
+  never blocks or undoes saving the question. Failures show in the function's
+  logs (non-200 responses).
+- The function only answers requests carrying the `x-webhook-secret` header
+  that matches its `WEBHOOK_SECRET` secret. It is deployed with JWT
+  verification off for that reason.
+- Only the row id is taken from the webhook; everything in the email is read
+  from the database, and each question can produce at most one email (Resend
+  idempotency key).
+
+Function secrets (set with `supabase secrets set`, never committed):
+
+| Secret | Purpose |
+| --- | --- |
+| `WEBHOOK_SECRET` | Shared secret the webhook sends in `x-webhook-secret` |
+| `RESEND_API_KEY` | Resend API key (sending access) |
+| `NOTIFY_FROM` | Sender on a domain verified in Resend, e.g. `GracePlace Questions <questions@graceplacewpg.ca>` |
+| `NOTIFY_TO` | Comma-separated fallback recipients |
+| `NOTIFY_TO_SUNDAY`, `NOTIFY_TO_WEDNESDAY` | Comma-separated recipients by series kind (optional; `NOTIFY_TO` is used when unset) |
+
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are provided to Edge Functions
+automatically. Unit tests: `deno test supabase/functions/notify-question/`.
 
 ## Accessibility notes
 
