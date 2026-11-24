@@ -25,7 +25,7 @@ site builds without any of it, it just does less.
 | Variable | Without it |
 | --- | --- |
 | `VITE_YOUTUBE_API_KEY`, `VITE_YOUTUBE_CHANNEL_ID` | The Sermons section links to the YouTube channel instead of listing recent videos. |
-| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | The Ask a Question page cannot save questions; submitting shows an error with the church email instead. Use the publishable key, never the secret one. |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | The Ask a Question page cannot load series or save questions (it shows an error with the church email instead), and `/admin` cannot sign in. Use the publishable key, never the secret one. |
 | `VITE_FORM_ENDPOINT` | The contact and ride forms open a pre-filled email to the church instead of posting to a form backend. |
 
 Anything prefixed `VITE_` is compiled into the public JavaScript bundle and is
@@ -58,7 +58,10 @@ src/
   components/       nav, footer, layout and shared pieces
   sections/         the home page sections
   pages/            Home, Give, Request a Ride, Ask a Question, 404
+  pages/admin/      private /admin page (sign-in, questions, series)
   index.css         Tailwind entry, daisyUI themes, keyframes
+supabase/
+  migrations/       SQL for the series, admins and row-level security
 ```
 
 ### Theming
@@ -89,12 +92,28 @@ Set the variables from the table above in Netlify under **Site configuration
 > Environment variables**. They are compiled in at build time, so after
 changing one, trigger a new deploy.
 
-## Changing the sermon series
+## Sermon series and the admin page
 
-The Ask a Question page files every question under `currentSeries` in
-[`src/data/site.ts`](src/data/site.ts). When a new series starts, change that
-string and commit. While it is an empty string the page shows a "questions
-open with the next series" message instead of the form.
+Series live in the Supabase `series` table, not in the code. Sign in at
+`/admin` (it is not linked from the site) and use the **Series** tab to add,
+rename, or switch a series on and off. Every active series appears in the Ask
+a Question dropdown as "Sunday series: …" or "Wednesday series: …"; with none
+active, the page shows "Questions open with the next series". The
+**Questions** tab lists everything asked, newest first, in Winnipeg time, with
+a filter by series and a button to mark each one answered.
+
+Sign-in is by magic link (an emailed one-time link). Public sign-ups are off,
+so only invited users have accounts, and only those listed in the `admins`
+table get past "You don't have access". To add an admin:
+
+1. Supabase dashboard → **Authentication → Users → Invite user**, enter their email.
+2. **SQL editor**:
+   `insert into public.admins (user_id) select id from auth.users where email = 'them@example.com';`
+
+The database enforces all of this with row-level security (see
+[`supabase/migrations/`](supabase/migrations/)): the public key can read active
+series and insert a question for an active series, but can never read
+questions. The admin page only decides what to show.
 
 ## Accessibility notes
 

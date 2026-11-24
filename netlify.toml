@@ -10,6 +10,18 @@
   # Vite 8 needs Node 20.19+ or 22.12+.
   NODE_VERSION = "22"
 
+# Keep the private admin page out of search results. The page also adds a
+# robots meta tag, but this header covers crawlers that do not run JavaScript.
+[[headers]]
+  for = "/admin"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
 # The app uses client-side routing (React Router), so a direct visit to
 # /give, /request-ride or /ask has no file to match. Serve the app shell and
 # let the router render the page. Real files (assets, images) still win,
