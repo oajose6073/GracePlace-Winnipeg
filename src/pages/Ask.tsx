@@ -3,37 +3,69 @@ import { CalendarClock, CheckCircle2, MessageCircleQuestion, Send } from "lucide
 import { Link } from "react-router-dom";
 import { PageHero } from "../components/PageHero";
 import { Reveal } from "../components/Reveal";
-import { church, currentSeries, questionMaxLength } from "../data/site";
-import { submitQuestion } from "../lib/submitQuestion";
+import { church, questionMaxLength } from "../data/site";
+import { fetchActiveSeries, submitQuestion, type ActiveSeries } from "../lib/questions";
+import { seriesLabel } from "../lib/series";
 
-const EMPTY = { name: "", question: "", website: "" };
+const EMPTY = { seriesId: "", name: "", question: "", website: "" };
+
+type Field = "seriesId" | "question";
+type Errors = Partial<Record<Field, string>>;
+
+type SeriesState =
+  | { status: "loading" }
+  | { status: "ready"; series: ActiveSeries[] }
+  | { status: "failed" };
 
 export default function Ask() {
+  const [seriesState, setSeriesState] = useState<SeriesState>({ status: "loading" });
   const [values, setValues] = useState(EMPTY);
-  const [error, setError] = useState<string>();
+  const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
 
   useEffect(() => {
     document.title = "Ask a Question — GracePlace Winnipeg";
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchActiveSeries(controller.signal)
+      .then((series) => {
+        setSeriesState({ status: "ready", series });
+        // With only one series open there is nothing to choose.
+        if (series.length === 1) setValues((v) => ({ ...v, seriesId: String(series[0].id) }));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Failed to load sermon series:", error);
+        setSeriesState({ status: "failed" });
+      });
+    return () => controller.abort();
+  }, []);
+
+  const series = seriesState.status === "ready" ? seriesState.series : [];
+  const chosen = series.find((s) => String(s.id) === values.seriesId);
+
   const set = (field: keyof typeof EMPTY, value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
-    if (field === "question") setError(undefined);
+    setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const question = values.question.trim();
-    if (!question) {
-      setError("Please write your question.");
-      document.getElementById("question")?.focus();
-      return;
+    const found: Errors = {};
+    if (!chosen) found.seriesId = "Please choose which series your question is about.";
+    if (!question) found.question = "Please write your question.";
+    else if (question.length > questionMaxLength) {
+      found.question = `Please keep your question under ${questionMaxLength} characters.`;
     }
-    if (question.length > questionMaxLength) {
-      setError(`Please keep your question under ${questionMaxLength} characters.`);
-      document.getElementById("question")?.focus();
+    setErrors(found);
+
+    const firstInvalid = Object.keys(found)[0];
+    if (firstInvalid || !chosen) {
+      document.getElementById(firstInvalid === "seriesId" ? "ask-series" : "question")?.focus();
       return;
     }
 
@@ -46,7 +78,7 @@ export default function Ask() {
 
     setStatus("sending");
     try {
-      await submitQuestion({ series: currentSeries, question, name: values.name.trim() });
+      await submitQuestion({ seriesId: chosen.id, question, name: values.name.trim() });
       setStatus("sent");
     } catch (err) {
       console.error(err);
@@ -55,31 +87,61 @@ export default function Ask() {
   };
 
   const askAnother = () => {
-    setValues(EMPTY);
+    // Keep the series: a second question is usually about the same one.
+    setValues({ ...EMPTY, seriesId: values.seriesId });
     setStatus("idle");
   };
 
-  const remaining = questionMaxLength - values.question.length;
+  const open = seriesState.status === "ready" && series.length > 0;
+  const closed = seriesState.status === "ready" && series.length === 0;
 
   return (
     <>
       <PageHero
-        badge={currentSeries ? `Series · ${currentSeries}` : "Sermon series"}
+        badge="Sermon series"
         title={
           <>
             Ask a <em className="text-primary italic">question</em>
           </>
         }
       >
-        {currentSeries
-          ? "Something from the current sermon series on your mind? Send it in. Your name is optional."
-          : "Have a question about a sermon series? This is where you can send it in."}
+        {closed
+          ? "Have a question about a sermon series? This is where you can send it in."
+          : "Something from a current sermon series on your mind? Send it in. Your name is optional."}
       </PageHero>
 
       <section className="px-5 py-16 sm:px-8 sm:py-20">
         <div className="mx-auto max-w-2xl">
-          <Reveal>
-            {!currentSeries ? (
+          {seriesState.status === "loading" && (
+            <div
+              role="status"
+              aria-label="Loading the current series"
+              className="card border border-base-300 bg-base-200"
+            >
+              <div className="card-body gap-4 p-6 sm:p-9">
+                <div className="skeleton h-4 w-32" />
+                <div className="skeleton h-10 w-full" />
+                <div className="skeleton h-10 w-full" />
+                <div className="skeleton h-36 w-full" />
+              </div>
+            </div>
+          )}
+
+          {seriesState.status === "failed" && (
+            <div role="alert" className="alert alert-error alert-soft rounded-box text-sm">
+              <span>
+                We could not load the current series. Please refresh the page, or email your
+                question to{" "}
+                <a className="link" href={`mailto:${church.email}`}>
+                  {church.email}
+                </a>
+                .
+              </span>
+            </div>
+          )}
+
+          {closed && (
+            <Reveal>
               <div className="card border border-base-300 bg-base-200 text-center">
                 <div className="card-body items-center gap-3 p-10 sm:p-14">
                   <span className="flex size-16 items-center justify-center rounded-full bg-primary/12 text-primary">
@@ -98,28 +160,34 @@ export default function Ask() {
                   </p>
                 </div>
               </div>
-            ) : status === "sent" ? (
-              <div role="status" className="card border border-primary/25 bg-base-200 text-center">
-                <div className="card-body items-center gap-3 p-10 sm:p-14">
-                  <span className="flex size-16 items-center justify-center rounded-full bg-primary/12 text-primary">
-                    <CheckCircle2 className="size-8" strokeWidth={1.5} />
-                  </span>
-                  <h2 className="font-display text-3xl font-medium text-ink">Thank you</h2>
-                  <p className="max-w-md text-[15px] text-base-content/65">
-                    Your question about {currentSeries} has been received. Thank you for engaging
-                    with the word alongside us.
-                  </p>
-                  <div className="mt-3 flex flex-wrap justify-center gap-3">
-                    <button type="button" onClick={askAnother} className="btn btn-primary h-11 px-7">
-                      Ask another question
-                    </button>
-                    <Link to="/" className="btn h-11 border-base-300 bg-base-100 px-7">
-                      Back to home
-                    </Link>
-                  </div>
+            </Reveal>
+          )}
+
+          {open && status === "sent" && (
+            <div role="status" className="card border border-primary/25 bg-base-200 text-center">
+              <div className="card-body items-center gap-3 p-10 sm:p-14">
+                <span className="flex size-16 items-center justify-center rounded-full bg-primary/12 text-primary">
+                  <CheckCircle2 className="size-8" strokeWidth={1.5} />
+                </span>
+                <h2 className="font-display text-3xl font-medium text-ink">Thank you</h2>
+                <p className="max-w-md text-[15px] text-base-content/65">
+                  Your question{chosen ? ` about ${chosen.name}` : ""} has been received. Thank you
+                  for engaging with the word alongside us.
+                </p>
+                <div className="mt-3 flex flex-wrap justify-center gap-3">
+                  <button type="button" onClick={askAnother} className="btn btn-primary h-11 px-7">
+                    Ask another question
+                  </button>
+                  <Link to="/" className="btn h-11 border-base-300 bg-base-100 px-7">
+                    Back to home
+                  </Link>
                 </div>
               </div>
-            ) : (
+            </div>
+          )}
+
+          {open && status !== "sent" && (
+            <Reveal>
               <form
                 onSubmit={handleSubmit}
                 noValidate
@@ -131,6 +199,38 @@ export default function Ask() {
                       <MessageCircleQuestion className="size-4" strokeWidth={1.75} />
                       Your question
                     </legend>
+
+                    <div>
+                      <label className="label text-sm" htmlFor="ask-series">
+                        Series
+                      </label>
+                      <select
+                        id="ask-series"
+                        name="series"
+                        required
+                        value={values.seriesId}
+                        onChange={(e) => set("seriesId", e.target.value)}
+                        aria-invalid={Boolean(errors.seriesId)}
+                        aria-describedby={errors.seriesId ? "series-error" : undefined}
+                        className={`select w-full rounded-box ${
+                          errors.seriesId ? "select-error" : ""
+                        }`}
+                      >
+                        <option value="" disabled>
+                          Choose a series
+                        </option>
+                        {series.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {seriesLabel(s)}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.seriesId && (
+                        <p id="series-error" role="alert" className="mt-1.5 text-sm text-error">
+                          {errors.seriesId}
+                        </p>
+                      )}
+                    </div>
 
                     <div>
                       <label className="label text-sm" htmlFor="ask-name">
@@ -151,7 +251,7 @@ export default function Ask() {
 
                     <div>
                       <label className="label text-sm" htmlFor="question">
-                        Question about {currentSeries}
+                        Question
                       </label>
                       <textarea
                         id="question"
@@ -161,20 +261,24 @@ export default function Ask() {
                         placeholder="What would you like to understand better?"
                         value={values.question}
                         onChange={(e) => set("question", e.target.value)}
-                        aria-invalid={Boolean(error)}
-                        aria-describedby={`question-count${error ? " question-error" : ""}`}
-                        className={`textarea w-full rounded-box ${error ? "textarea-error" : ""}`}
+                        aria-invalid={Boolean(errors.question)}
+                        aria-describedby={`question-count${errors.question ? " question-error" : ""}`}
+                        className={`textarea w-full rounded-box ${
+                          errors.question ? "textarea-error" : ""
+                        }`}
                       />
                       <div className="mt-1.5 flex items-start gap-4">
-                        {error && (
+                        {errors.question && (
                           <p id="question-error" role="alert" className="text-sm text-error">
-                            {error}
+                            {errors.question}
                           </p>
                         )}
                         <p
                           id="question-count"
                           className={`ml-auto shrink-0 text-xs tabular-nums ${
-                            remaining < 50 ? "text-warning" : "text-base-content/50"
+                            questionMaxLength - values.question.length < 50
+                              ? "text-warning"
+                              : "text-base-content/50"
                           }`}
                         >
                           {values.question.length} / {questionMaxLength}
@@ -219,8 +323,8 @@ export default function Ask() {
                   </fieldset>
                 </div>
               </form>
-            )}
-          </Reveal>
+            </Reveal>
+          )}
         </div>
       </section>
     </>
