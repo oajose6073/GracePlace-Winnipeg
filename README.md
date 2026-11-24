@@ -104,18 +104,40 @@ active, the page shows "Questions open with the next series". The
 a filter by series and a button to mark each one answered.
 
 Sign-in is by magic link (an emailed one-time link). The Supabase project is
-shared with GracePlace Words, which keeps public sign-up on, so many people
-have accounts. That is fine: `/admin` never creates accounts
+shared with GracePlace Words, which keeps sign-up on but makes it invite-only:
+its trigger `app.handle_new_auth_user()` refuses any new account whose email is
+not on the Words member list (`public.person`). `/admin` never creates accounts
 (`shouldCreateUser: false`), and only users listed in the `admins` table get
-past "You don't have access". To add an admin:
+past "You don't have access".
 
-1. If they have no account yet (no GracePlace Words account either), create
-   one: Supabase dashboard → **Authentication → Users → Add user → Send
-   invitation**. The invitation link opens the Words app (the project's Site
-   URL); that is expected.
-2. **SQL editor**:
-   `insert into public.admins (user_id) select id from auth.users where email = 'them@example.com';`
-3. They sign in at `graceplacewpg.ca/admin`.
+To add an admin (all SQL in the dashboard's SQL editor; replace the name and
+email):
+
+1. If they are not already on the Words member list, add them as a Words
+   member. This also gives them member access to GracePlace Words. Safe to run
+   twice:
+
+   ```sql
+   insert into public.person (name, email, role)
+   values ('Pastor Name', 'pastor@example.com', 'member')
+   on conflict ((lower(email))) do nothing;
+   ```
+
+   If they were removed from Words earlier, this does nothing and the invite
+   will still be refused; restoring them is a Words decision.
+2. If they have no account yet, create one: **Authentication → Users → Add
+   user → Send invitation**. The invitation link opens the Words app (the
+   project's Site URL); that is expected. Signing in to Words once works too.
+3. Make them an admin:
+
+   ```sql
+   insert into public.admins (user_id)
+   select id from auth.users where lower(email) = lower('pastor@example.com')
+   on conflict (user_id) do nothing;
+   ```
+
+   Check it took: `select * from public.admins;` shows one more row.
+4. They sign in at `graceplacewpg.ca/admin`.
 
 Because the Site URL belongs to Words, the login sets its redirect explicitly
 to `<this site>/admin`. That URL must be listed under **Authentication → URL

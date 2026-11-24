@@ -14,13 +14,21 @@
 -- "member" is a signed-in user who is NOT in public.admins, such as anyone
 -- with a GracePlace Words account.
 --
--- Note: if another app has a trigger on auth.users inserts that fails for a
--- bare test user, this test stops with that trigger's error instead.
+-- GracePlace Words shares this Supabase project and is invite-only: its
+-- trigger app.handle_new_auth_user() refuses any new auth user whose email is
+-- not on the Words member list (public.person). So the test first puts its two
+-- throwaway emails on that list. Those person rows are rolled back with
+-- everything else; the Words trigger itself is not touched.
+--
+-- The one thing a rollback does not undo is the series id sequence: ids used
+-- by the test's series are skipped, so the next real series id has a gap.
 
 do $$
 declare
-  admin_id    uuid := gen_random_uuid();
-  member_id   uuid := gen_random_uuid();
+  admin_id     uuid := gen_random_uuid();
+  member_id    uuid := gen_random_uuid();
+  admin_email  text := 'rls-test-admin-'  || admin_id  || '@example.invalid';
+  member_email text := 'rls-test-member-' || member_id || '@example.invalid';
   active_id   bigint;
   inactive_id bigint;
   question_id text;
@@ -32,9 +40,17 @@ declare
   failures    text[] := '{}';
 begin
   -- Fixtures (as the caller, i.e. the table owner) --------------------------
+
+  -- Words member list first, so its sign-up trigger accepts the test users.
+  -- Dynamic SQL so the test also runs on a database without Words.
+  if to_regclass('public.person') is not null then
+    execute 'insert into public.person (name, email) values ($1, $2), ($3, $4)'
+      using 'RLS test admin', admin_email, 'RLS test member', member_email;
+  end if;
+
   insert into auth.users (id, email, aud, role) values
-    (admin_id,  'rls-test-admin-'  || admin_id  || '@example.invalid', 'authenticated', 'authenticated'),
-    (member_id, 'rls-test-member-' || member_id || '@example.invalid', 'authenticated', 'authenticated');
+    (admin_id,  admin_email,  'authenticated', 'authenticated'),
+    (member_id, member_email, 'authenticated', 'authenticated');
   insert into public.admins (user_id) values (admin_id);
 
   insert into public.series (name, kind, active)
