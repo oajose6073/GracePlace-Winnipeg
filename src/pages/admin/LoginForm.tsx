@@ -34,8 +34,13 @@ export function LoginForm() {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: address,
       options: {
-        // Never create an account from this form: admins are invited.
+        // Never create an account from this form. Public sign-up stays on for
+        // GracePlace Words (same Supabase project), so this flag is what keeps
+        // /admin from creating accounts.
         shouldCreateUser: false,
+        // Always explicit: the project's Site URL points at the Words app, so
+        // without this the link would land there. Must be in the dashboard's
+        // Redirect URLs allow-list.
         emailRedirectTo: `${window.location.origin}/admin`,
       },
     });

@@ -62,6 +62,7 @@ src/
   index.css         Tailwind entry, daisyUI themes, keyframes
 supabase/
   migrations/       SQL for the series, admins and row-level security
+  tests/            access test for those rules (run in the SQL editor)
 ```
 
 ### Theming
@@ -102,18 +103,32 @@ active, the page shows "Questions open with the next series". The
 **Questions** tab lists everything asked, newest first, in Winnipeg time, with
 a filter by series and a button to mark each one answered.
 
-Sign-in is by magic link (an emailed one-time link). Public sign-ups are off,
-so only invited users have accounts, and only those listed in the `admins`
-table get past "You don't have access". To add an admin:
+Sign-in is by magic link (an emailed one-time link). The Supabase project is
+shared with GracePlace Words, which keeps public sign-up on, so many people
+have accounts. That is fine: `/admin` never creates accounts
+(`shouldCreateUser: false`), and only users listed in the `admins` table get
+past "You don't have access". To add an admin:
 
-1. Supabase dashboard → **Authentication → Users → Invite user**, enter their email.
+1. If they have no account yet (no GracePlace Words account either), create
+   one: Supabase dashboard → **Authentication → Users → Add user → Send
+   invitation**. The invitation link opens the Words app (the project's Site
+   URL); that is expected.
 2. **SQL editor**:
    `insert into public.admins (user_id) select id from auth.users where email = 'them@example.com';`
+3. They sign in at `graceplacewpg.ca/admin`.
+
+Because the Site URL belongs to Words, the login sets its redirect explicitly
+to `<this site>/admin`. That URL must be listed under **Authentication → URL
+Configuration → Redirect URLs**, or Supabase sends the link to Words instead.
 
 The database enforces all of this with row-level security (see
 [`supabase/migrations/`](supabase/migrations/)): the public key can read active
 series and insert a question for an active series, but can never read
-questions. The admin page only decides what to show.
+questions, and a signed-in user who is not in `admins` gets nothing beyond the
+active series. The admin page only decides what to show.
+[`supabase/tests/admin_access.test.sql`](supabase/tests/admin_access.test.sql)
+checks these rules; run it in the SQL editor after any policy change (it rolls
+back everything it creates and reports the result as an error message).
 
 ## Accessibility notes
 

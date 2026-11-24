@@ -3,12 +3,75 @@
 -- Run once in the Supabase SQL editor (or with `supabase db push`). The whole
 -- script runs as a single transaction: if any statement fails, nothing changes.
 --
+-- This Supabase project also hosts GracePlace Words, which has public sign-up,
+-- so "authenticated" means anyone with a Words account. Nothing here grants
+-- that role anything beyond reading the (public) active series; every other
+-- access requires a row in public.admins.
+--
 -- After this migration:
 --   anon           can read active series, and can insert a question only for
 --                  an active series. It still cannot read any questions.
---   authenticated  non-admins get the same as anon and nothing more.
+--   authenticated  (non-admin) can read active series. Nothing else: no
+--                  questions (read, insert or update) and no series writes.
 --   admins         (users listed in public.admins) can read and update every
 --                  question, and read, create and update every series.
+
+-------------------------------------------------------------------------------
+-- 0. Pre-flight: stop with one clear message if any name is already taken
+--    (for example by GracePlace Words). Nothing below uses CREATE OR REPLACE,
+--    so a clash would also abort the transaction; this just lists them all.
+-------------------------------------------------------------------------------
+
+do $$
+declare
+  taken text[] := '{}';
+  rel text;
+begin
+  foreach rel in array array[
+    'series', 'series_pkey', 'series_id_seq', 'admins', 'admins_pkey',
+    'series_questions_series_id_idx', 'series_questions_created_at_idx'
+  ] loop
+    if to_regclass('public.' || quote_ident(rel)) is not null then
+      taken := taken || ('relation public.' || rel);
+    end if;
+  end loop;
+
+  if to_regprocedure('public.is_admin()') is not null then
+    taken := taken || 'function public.is_admin()'::text;
+  end if;
+  if to_regprocedure('public.series_questions_fill_series_name()') is not null then
+    taken := taken || 'function public.series_questions_fill_series_name()'::text;
+  end if;
+
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'series_questions'
+               and column_name = 'series_id') then
+    taken := taken || 'column public.series_questions.series_id'::text;
+  end if;
+  if exists (select 1 from pg_trigger
+             where tgrelid = 'public.series_questions'::regclass
+               and tgname = 'series_questions_fill_series_name') then
+    taken := taken || 'trigger series_questions_fill_series_name'::text;
+  end if;
+  if exists (select 1 from pg_constraint
+             where conrelid = 'public.series_questions'::regclass
+               and conname = 'series_questions_series_id_fkey') then
+    taken := taken || 'constraint series_questions_series_id_fkey'::text;
+  end if;
+  if exists (select 1 from pg_policies
+             where schemaname = 'public' and tablename = 'series_questions'
+               and policyname in ('Visitors can ask about an active series',
+                                  'Admins can read questions',
+                                  'Admins can update questions')) then
+    taken := taken || 'a policy name on public.series_questions'::text;
+  end if;
+
+  if cardinality(taken) > 0 then
+    raise exception 'Migration stopped, nothing was changed. Already exists: %',
+      array_to_string(taken, '; ');
+  end if;
+end;
+$$;
 
 -------------------------------------------------------------------------------
 -- 1. Series
@@ -94,9 +157,11 @@ grant execute on function public.is_admin() to authenticated;
 
 revoke all on public.series, public.admins, public.series_questions from anon, authenticated;
 
+-- authenticated holds these privileges so that admins can use them; the
+-- policies below admit only rows for users in public.admins.
 grant select                 on public.series             to anon, authenticated;
 grant insert, update         on public.series             to authenticated;
-grant insert                 on public.series_questions   to anon, authenticated;
+grant insert                 on public.series_questions   to anon;
 grant select, update         on public.series_questions   to authenticated;
 grant select                 on public.admins             to authenticated;
 
@@ -147,8 +212,10 @@ begin
 end;
 $$;
 
-create policy "Anyone can ask about an active series"
-  on public.series_questions for insert to anon, authenticated
+-- anon only: the Ask page always posts with the publishable key alone, and
+-- signed-in Words users get no access to this table.
+create policy "Visitors can ask about an active series"
+  on public.series_questions for insert to anon
   with check (
     series_id is not null
     and coalesce(answered, false) = false
