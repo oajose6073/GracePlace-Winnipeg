@@ -1,16 +1,23 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CalendarClock, CheckCircle2, MessageCircleQuestion, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHero } from "../components/PageHero";
 import { Reveal } from "../components/Reveal";
-import { church, questionMaxLength } from "../data/site";
-import { fetchActiveSeries, submitQuestion, type ActiveSeries } from "../lib/questions";
+import { church } from "../data/site";
+import {
+  charCount,
+  messageForCheckViolation,
+  nameLengthMessage,
+  QUESTION_MAX,
+  questionLengthMessage,
+  type LengthField,
+} from "../lib/questionLength";
+import { fetchActiveSeries, SubmitError, submitQuestion, type ActiveSeries } from "../lib/questions";
 import { seriesLabel } from "../lib/series";
 
 const EMPTY = { seriesId: "", name: "", question: "", website: "" };
 
-type Field = "seriesId" | "question";
-type Errors = Partial<Record<Field, string>>;
+const FIELD_IDS = { seriesId: "ask-series", name: "ask-name", question: "question" } as const;
 
 type SeriesState =
   | { status: "loading" }
@@ -20,7 +27,11 @@ type SeriesState =
 export default function Ask() {
   const [seriesState, setSeriesState] = useState<SeriesState>({ status: "loading" });
   const [values, setValues] = useState(EMPTY);
-  const [errors, setErrors] = useState<Errors>({});
+  const [seriesError, setSeriesError] = useState<string>();
+  // "Too short" is only reported once the visitor has tried to submit.
+  const [checkShort, setCheckShort] = useState(false);
+  // A length rejection from the database, shown until that field is edited.
+  const [serverError, setServerError] = useState<{ field: LengthField; message: string }>();
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
 
   useEffect(() => {
@@ -46,28 +57,51 @@ export default function Ask() {
   const series = seriesState.status === "ready" ? seriesState.series : [];
   const chosen = series.find((s) => String(s.id) === values.seriesId);
 
+  // Length messages are derived from the current values, so they update as
+  // the visitor types and disappear the moment the input becomes valid.
+  const questionError =
+    serverError?.field === "question" ? serverError.message : questionLengthMessage(values.question, checkShort);
+  const nameError = serverError?.field === "name" ? serverError.message : nameLengthMessage(values.name);
+  // Same counting as the database (characters, not UTF-16 units).
+  const questionCount = charCount(values.question);
+
   const set = (field: keyof typeof EMPTY, value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    if (field === "seriesId") setSeriesError(undefined);
+    if (serverError?.field === field) setServerError(undefined);
   };
+
+  const focusField = (field: keyof typeof FIELD_IDS) => document.getElementById(FIELD_IDS[field])?.focus();
+
+  // A field inside the disabled "sending" fieldset cannot take focus, so a
+  // focus request made while sending is applied once the form is enabled again.
+  const pendingFocus = useRef<keyof typeof FIELD_IDS>(undefined);
+  useEffect(() => {
+    if (status !== "sending" && pendingFocus.current) {
+      focusField(pendingFocus.current);
+      pendingFocus.current = undefined;
+    }
+  });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setCheckShort(true);
+    setServerError(undefined);
 
-    const question = values.question.trim();
-    const found: Errors = {};
-    if (!chosen) found.seriesId = "Please choose which series your question is about.";
-    if (!question) found.question = "Please write your question.";
-    else if (question.length > questionMaxLength) {
-      found.question = `Please keep your question under ${questionMaxLength} characters.`;
-    }
-    setErrors(found);
-
-    const firstInvalid = Object.keys(found)[0];
+    // Nothing is sent until every field passes. Fields are checked in page order
+    // so focus lands on the first problem.
+    const invalid = {
+      seriesId: chosen ? undefined : "Please choose which series your question is about.",
+      name: nameLengthMessage(values.name),
+      question: questionLengthMessage(values.question, true),
+    };
+    setSeriesError(invalid.seriesId);
+    const firstInvalid = (Object.keys(invalid) as (keyof typeof invalid)[]).find((k) => invalid[k]);
     if (firstInvalid || !chosen) {
-      document.getElementById(firstInvalid === "seriesId" ? "ask-series" : "question")?.focus();
+      focusField(firstInvalid ?? "seriesId");
       return;
     }
+    const question = values.question.trim();
 
     // The honeypot is invisible to people, so anything typed into it came from
     // a bot. Show the normal thank-you and quietly drop the submission.
@@ -81,6 +115,15 @@ export default function Ask() {
       await submitQuestion({ seriesId: chosen.id, question, name: values.name.trim() });
       setStatus("sent");
     } catch (err) {
+      // A check-constraint rejection (23514) is a length problem, not a
+      // failure: show it on the field instead of the generic message.
+      if (err instanceof SubmitError && err.code === "23514") {
+        const mapped = messageForCheckViolation(err.message, values);
+        setServerError(mapped);
+        pendingFocus.current = mapped.field;
+        setStatus("idle");
+        return;
+      }
       console.error(err);
       setStatus("failed");
     }
@@ -89,6 +132,8 @@ export default function Ask() {
   const askAnother = () => {
     // Keep the series: a second question is usually about the same one.
     setValues({ ...EMPTY, seriesId: values.seriesId });
+    setCheckShort(false);
+    setServerError(undefined);
     setStatus("idle");
   };
 
@@ -210,11 +255,9 @@ export default function Ask() {
                         required
                         value={values.seriesId}
                         onChange={(e) => set("seriesId", e.target.value)}
-                        aria-invalid={Boolean(errors.seriesId)}
-                        aria-describedby={errors.seriesId ? "series-error" : undefined}
-                        className={`select w-full rounded-box ${
-                          errors.seriesId ? "select-error" : ""
-                        }`}
+                        aria-invalid={Boolean(seriesError)}
+                        aria-describedby={seriesError ? "series-error" : undefined}
+                        className={`select w-full rounded-box ${seriesError ? "select-error" : ""}`}
                       >
                         <option value="" disabled>
                           Choose a series
@@ -225,9 +268,9 @@ export default function Ask() {
                           </option>
                         ))}
                       </select>
-                      {errors.seriesId && (
+                      {seriesError && (
                         <p id="series-error" role="alert" className="mt-1.5 text-sm text-error">
-                          {errors.seriesId}
+                          {seriesError}
                         </p>
                       )}
                     </div>
@@ -241,12 +284,18 @@ export default function Ask() {
                         name="name"
                         type="text"
                         autoComplete="name"
-                        maxLength={100}
                         placeholder="Leave blank to ask anonymously"
                         value={values.name}
                         onChange={(e) => set("name", e.target.value)}
-                        className="input w-full rounded-box"
+                        aria-invalid={Boolean(nameError)}
+                        aria-describedby={nameError ? "name-error" : undefined}
+                        className={`input w-full rounded-box ${nameError ? "input-error" : ""}`}
                       />
+                      {nameError && (
+                        <p id="name-error" role="alert" className="mt-1.5 text-sm text-error">
+                          {nameError}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -257,31 +306,30 @@ export default function Ask() {
                         id="question"
                         name="question"
                         rows={6}
-                        maxLength={questionMaxLength}
                         placeholder="What would you like to understand better?"
                         value={values.question}
                         onChange={(e) => set("question", e.target.value)}
-                        aria-invalid={Boolean(errors.question)}
-                        aria-describedby={`question-count${errors.question ? " question-error" : ""}`}
-                        className={`textarea w-full rounded-box ${
-                          errors.question ? "textarea-error" : ""
-                        }`}
+                        aria-invalid={Boolean(questionError)}
+                        aria-describedby={`question-count${questionError ? " question-error" : ""}`}
+                        className={`textarea w-full rounded-box ${questionError ? "textarea-error" : ""}`}
                       />
                       <div className="mt-1.5 flex items-start gap-4">
-                        {errors.question && (
+                        {questionError && (
                           <p id="question-error" role="alert" className="text-sm text-error">
-                            {errors.question}
+                            {questionError}
                           </p>
                         )}
                         <p
                           id="question-count"
                           className={`ml-auto shrink-0 text-xs tabular-nums ${
-                            questionMaxLength - values.question.length < 50
-                              ? "text-warning"
-                              : "text-base-content/50"
+                            questionCount > QUESTION_MAX
+                              ? "font-medium text-error"
+                              : QUESTION_MAX - questionCount < 50
+                                ? "text-warning"
+                                : "text-base-content/50"
                           }`}
                         >
-                          {values.question.length} / {questionMaxLength}
+                          {questionCount} / {QUESTION_MAX}
                         </p>
                       </div>
                     </div>

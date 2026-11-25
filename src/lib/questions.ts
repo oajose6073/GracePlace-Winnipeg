@@ -41,6 +41,20 @@ export type NewQuestion = {
   name?: string;
 };
 
+/** A rejected insert, carrying the Postgres error code PostgREST returns
+ *  (e.g. "23514" for a check-constraint violation). */
+export class SubmitError extends Error {
+  readonly status: number;
+  readonly code: string | undefined;
+
+  constructor(status: number, code: string | undefined, message: string) {
+    super(message);
+    this.name = "SubmitError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export async function submitQuestion({ seriesId, question, name }: NewQuestion): Promise<void> {
   const row: Record<string, string | number> = { series_id: seriesId, question };
   if (name) row.name = name;
@@ -55,5 +69,12 @@ export async function submitQuestion({ seriesId, question, name }: NewQuestion):
     body: JSON.stringify(row),
   });
 
-  if (!response.ok) throw new Error(`Supabase responded ${response.status}`);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+    throw new SubmitError(
+      response.status,
+      body.code,
+      body.message ?? `Supabase responded ${response.status}`,
+    );
+  }
 }

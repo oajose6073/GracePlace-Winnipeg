@@ -36,8 +36,6 @@ export const navLinks = [
   { label: "Ask a Question", to: "/ask" },
 ] as const;
 
-/** Longest question the Ask page accepts, in characters. */
-export const questionMaxLength = 1000;
 
 export const socials = [
   { label: "Facebook", href: "https://www.facebook.com/graceplacewpg", icon: "facebook" },
