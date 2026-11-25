@@ -1,6 +1,6 @@
 // deno test supabase/functions/notify-question/
 // No network: fetch is replaced by a fake that records every request.
-import { createHandler, recipientsFor, SECRET_HEADER } from "./handler.ts";
+import { assignedEmails, createHandler, SECRET_HEADER } from "./handler.ts";
 import { buildEmail, escapeHtml, winnipegZone } from "./email.ts";
 
 // --- tiny assertion helpers (no dependencies) --------------------------------
@@ -22,8 +22,19 @@ const BASE_ENV: Record<string, string> = {
   RESEND_API_KEY: "re_test",
   NOTIFY_FROM: "GracePlace Questions <questions@graceplacewpg.ca>",
   NOTIFY_TO: "office@example.org",
-  NOTIFY_TO_SUNDAY: " pastor.a@example.org , pastor.b@example.org,, not-an-email ",
 };
+
+// The series' assigned people, as PostgREST returns series_recipients with
+// person embedded: two current pastors, one removed, one duplicate address,
+// one dangling row and one unusable address.
+const RECIPIENTS = [
+  { person: { email: " pastor.a@example.org ", removed_at: null } },
+  { person: { email: "pastor.b@example.org", removed_at: null } },
+  { person: { email: "former@example.org", removed_at: "2026-10-01T00:00:00Z" } },
+  { person: { email: "PASTOR.A@example.org", removed_at: null } },
+  { person: null },
+  { person: { email: "not-an-email", removed_at: null } },
+];
 
 const QUESTION = {
   id: 42,
@@ -39,6 +50,8 @@ type Call = { url: string; init: RequestInit };
 function fakeFetch(opts: {
   question?: unknown;
   series?: unknown;
+  recipients?: unknown;
+  recipientsStatus?: number;
   resendStatus?: number;
   supabaseStatus?: number;
 } = {}) {
@@ -48,6 +61,12 @@ function fakeFetch(opts: {
     calls.push({ url, init });
     if (url.includes("/rest/v1/")) {
       if (opts.supabaseStatus) return Promise.resolve(new Response("boom", { status: opts.supabaseStatus }));
+      if (url.includes("/series_recipients?")) {
+        if (opts.recipientsStatus) {
+          return Promise.resolve(new Response('{"code":"42P01"}', { status: opts.recipientsStatus }));
+        }
+        return Promise.resolve(Response.json(opts.recipients === undefined ? RECIPIENTS : opts.recipients));
+      }
       const body = url.includes("/series_questions?")
         ? (opts.question === undefined ? [QUESTION] : opts.question)
         : (opts.series === undefined ? [SERIES] : opts.series);
@@ -148,6 +167,7 @@ Deno.test("sends one email built from the database row, not the payload", async 
   assertEquals(rest.map((c) => c.url), [
     "https://proj.supabase.co/rest/v1/series_questions?id=eq.42&select=id,created_at,question,name,series_id",
     "https://proj.supabase.co/rest/v1/series?id=eq.7&select=name,kind",
+    "https://proj.supabase.co/rest/v1/series_recipients?series_id=eq.7&select=person(email,removed_at)",
   ]);
   const h = rest[0].init.headers as Record<string, string>;
   assertEquals(h.apikey, SERVICE_KEY);
@@ -162,7 +182,9 @@ Deno.test("sends one email built from the database row, not the payload", async 
 
   const body = resendBody(calls);
   assertEquals(body.from, BASE_ENV.NOTIFY_FROM);
+  // The series' current pastors: removed, dangling, invalid and duplicate skipped.
   assertEquals(body.to, ["pastor.a@example.org", "pastor.b@example.org"]);
+  assertEquals((await res.json()).source, "series pastors");
   assertEquals(body.reply_to, "graceplacewpg@gmail.com");
   assertEquals(body.subject, "New question: Handling Wrongs By Love");
 
@@ -215,37 +237,96 @@ Deno.test("legacy service_role JWT is also sent as a bearer token", async () => 
 });
 
 // --- recipients -----------------------------------------------------------------
-Deno.test("Wednesday series uses NOTIFY_TO_WEDNESDAY when set", async () => {
+Deno.test("assignedEmails: current emails only, removed and unusable skipped, no duplicates", () => {
+  assertEquals(assignedEmails(RECIPIENTS), ["pastor.a@example.org", "pastor.b@example.org"]);
+  assertEquals(assignedEmails([]), []);
+  assertEquals(
+    assignedEmails([{ person: { email: "only@example.org", removed_at: "2026-11-01T00:00:00Z" } }]),
+    [],
+    "a removed person is never emailed",
+  );
+});
+
+Deno.test("Wednesday series: its own pastors, labelled Wednesday", async () => {
   const { response, calls } = run({
-    env: { NOTIFY_TO_WEDNESDAY: "wed@example.org" },
-    fetchOpts: { series: [{ name: "Romans", kind: "wednesday" }] },
+    fetchOpts: {
+      series: [{ name: "Romans", kind: "wednesday" }],
+      recipients: [{ person: { email: "wed.lead@example.org", removed_at: null } }],
+    },
   });
   assertEquals((await response).status, 200);
   const body = resendBody(calls);
-  assertEquals(body.to, ["wed@example.org"]);
+  assertEquals(body.to, ["wed.lead@example.org"]);
   assertEquals(body.subject, "New question: Romans");
   assert(body.html.includes("Wednesday series: Romans"));
 });
 
-Deno.test("falls back to NOTIFY_TO when the kind-specific list is unset or empty", () => {
-  const env = (v: Record<string, string>) => (n: string) => v[n];
-  assertEquals(recipientsFor("wednesday", env({ NOTIFY_TO: "a@x.org" })), ["a@x.org"]);
-  assertEquals(recipientsFor("sunday", env({ NOTIFY_TO: "a@x.org", NOTIFY_TO_SUNDAY: " , " })), ["a@x.org"]);
-  assertEquals(recipientsFor("sunday", env({ NOTIFY_TO: "a@x.org", NOTIFY_TO_SUNDAY: "s@x.org" })), ["s@x.org"]);
-  assertEquals(recipientsFor(null, env({ NOTIFY_TO: "a@x.org", NOTIFY_TO_SUNDAY: "s@x.org" })), ["a@x.org"]);
+Deno.test("no one assigned to the series -> NOTIFY_TO", async () => {
+  const { response, calls } = run({ fetchOpts: { recipients: [] } });
+  const res = await response;
+  assertEquals(res.status, 200);
+  assertEquals(resendBody(calls).to, ["office@example.org"]);
+  assertEquals((await res.json()).source, "NOTIFY_TO");
+});
+
+Deno.test("everyone assigned has been removed from Words -> NOTIFY_TO", async () => {
+  const { response, calls } = run({
+    fetchOpts: {
+      recipients: [
+        { person: { email: "gone1@example.org", removed_at: "2026-10-01T00:00:00Z" } },
+        { person: { email: "gone2@example.org", removed_at: "2026-11-01T00:00:00Z" } },
+      ],
+    },
+  });
+  assertEquals((await response).status, 200);
+  assertEquals(resendBody(calls).to, ["office@example.org"]);
+});
+
+Deno.test("recipient lookup fails -> still emails NOTIFY_TO, and logs it", async () => {
+  const errors: unknown[][] = [];
+  const env = { ...BASE_ENV };
+  const f = fakeFetch({ recipientsStatus: 404 });
+  const handler = createHandler({
+    env: (n) => env[n],
+    fetch: f.fn,
+    log: { info: () => {}, error: (...a) => errors.push(a) },
+  });
+  const res = await handler(
+    new Request("http://x", {
+      method: "POST",
+      headers: { [SECRET_HEADER]: SECRET },
+      body: JSON.stringify({ type: "INSERT", schema: "public", table: "series_questions", record: { id: 42 } }),
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(resendBody(f.calls).to, ["office@example.org"]);
+  assert(String(errors[0]?.[0]).includes("falling back to NOTIFY_TO"), "logged");
+});
+
+Deno.test("the old NOTIFY_TO_SUNDAY / NOTIFY_TO_WEDNESDAY secrets are ignored", async () => {
+  const { response, calls } = run({
+    env: { NOTIFY_TO_SUNDAY: "old.sunday@example.org", NOTIFY_TO_WEDNESDAY: "old.wed@example.org" },
+    fetchOpts: { recipients: [] },
+  });
+  await response;
+  assertEquals(resendBody(calls).to, ["office@example.org"]);
 });
 
 Deno.test("question without a series (older rows) goes to NOTIFY_TO", async () => {
   const { response, calls } = run({ fetchOpts: { question: [{ ...QUESTION, series_id: null }] } });
   assertEquals((await response).status, 200);
-  assertEquals(calls.filter((c) => c.url.includes("/rest/v1/series?")).length, 0);
+  assertEquals(
+    calls.filter((c) => /\/rest\/v1\/(series|series_recipients)\?/.test(c.url)).length,
+    0,
+    "no series or recipients lookup",
+  );
   const body = resendBody(calls);
   assertEquals(body.to, ["office@example.org"]);
   assertEquals(body.subject, "New question: (no series)");
 });
 
-Deno.test("no recipients configured -> 500 and no email", async () => {
-  const { response, calls } = run({ env: { NOTIFY_TO: "", NOTIFY_TO_SUNDAY: "" } });
+Deno.test("no pastors and no NOTIFY_TO -> 500 and no email", async () => {
+  const { response, calls } = run({ env: { NOTIFY_TO: "" }, fetchOpts: { recipients: [] } });
   assertEquals((await response).status, 500);
   assertEquals(resendCall(calls), undefined);
 });

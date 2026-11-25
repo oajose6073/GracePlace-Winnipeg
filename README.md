@@ -16,6 +16,7 @@ npm run dev        # http://localhost:5173
 | `npm run preview` | Serves the built site locally |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
+| `npm test` | Unit tests (Node's built-in runner) |
 
 ## Configuration
 
@@ -161,6 +162,15 @@ Webhook on `INSERT` into `public.series_questions` calls the Edge Function
 which looks the question and its series up with the service role key and
 sends one email through Resend (reply-to `graceplacewpg@gmail.com`).
 
+**Who gets it.** Each series has its own recipients, picked in `/admin` →
+**Series** (create or Edit) from the GracePlace Words member list
+(`public.person`). Pastors rotate monthly, so change the ticks when the
+rota changes. The email goes to each assigned person's current Words email;
+anyone since removed from Words is skipped. If no one is left (or none was
+picked), it goes to `NOTIFY_TO` instead. People marked "can't open the
+questions page" get the email but are not in `admins`, so the link in it
+will not let them in (see "To add an admin" above).
+
 - The webhook runs after the insert has committed, so a failed or slow email
   never blocks or undoes saving the question. Failures show in the function's
   logs (non-200 responses).
@@ -178,8 +188,7 @@ Function secrets (set with `supabase secrets set`, never committed):
 | `WEBHOOK_SECRET` | Shared secret the webhook sends in `x-webhook-secret` |
 | `RESEND_API_KEY` | Resend API key (sending access) |
 | `NOTIFY_FROM` | Sender on a domain verified in Resend, e.g. `GracePlace Questions <questions@graceplacewpg.ca>` |
-| `NOTIFY_TO` | Comma-separated fallback recipients |
-| `NOTIFY_TO_SUNDAY`, `NOTIFY_TO_WEDNESDAY` | Comma-separated recipients by series kind (optional; `NOTIFY_TO` is used when unset) |
+| `NOTIFY_TO` | Comma-separated fallback recipients, used when a series has no (current) pastors assigned |
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are provided to Edge Functions
 automatically. Unit tests: `deno test supabase/functions/notify-question/`.

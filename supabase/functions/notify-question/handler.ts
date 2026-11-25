@@ -6,7 +6,7 @@
 // The handler takes its environment and fetch as arguments so it can be
 // tested without network access; index.ts wires in the real ones.
 
-import { buildEmail, type QuestionRow, REPLY_TO, type SeriesKind, type SeriesRow } from "./email.ts";
+import { buildEmail, type QuestionRow, REPLY_TO, type SeriesRow } from "./email.ts";
 
 export const SECRET_HEADER = "x-webhook-secret";
 const RESEND_URL = "https://api.resend.com/emails";
@@ -34,21 +34,35 @@ async function sameSecret(given: string, expected: string): Promise<boolean> {
   return diff === 0;
 }
 
+const isEmail = (s: string) => /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(s);
+
 /** "a@x.org, b@y.org," -> ["a@x.org", "b@y.org"] */
 export const parseRecipients = (value: string | undefined) =>
   (value ?? "")
     .split(",")
     .map((s) => s.trim())
-    .filter((s) => /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(s));
+    .filter(isEmail);
 
-/** Kind-specific list, falling back to NOTIFY_TO when it is unset or empty. */
-export function recipientsFor(kind: SeriesKind | null, env: Deps["env"]): string[] {
-  const specific = kind === "sunday"
-    ? parseRecipients(env("NOTIFY_TO_SUNDAY"))
-    : kind === "wednesday"
-    ? parseRecipients(env("NOTIFY_TO_WEDNESDAY"))
-    : [];
-  return specific.length ? specific : parseRecipients(env("NOTIFY_TO"));
+/** A series_recipients row with its person embedded (PostgREST resource embedding). */
+export type RecipientRow = { person: { email: string | null; removed_at: string | null } | null };
+
+/**
+ * The series' assigned people's current email addresses: removed people
+ * (person.removed_at set) and unusable addresses are skipped, duplicates are
+ * dropped case-insensitively.
+ */
+export function assignedEmails(rows: RecipientRow[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of rows) {
+    const p = row.person;
+    if (!p || p.removed_at) continue;
+    const email = (p.email ?? "").trim();
+    if (!isEmail(email) || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
+    out.push(email);
+  }
+  return out;
 }
 
 export function createHandler({ env, fetch, log = console }: Deps) {
@@ -98,12 +112,12 @@ export function createHandler({ env, fetch, log = console }: Deps) {
     // newer sb_secret_ keys are sent as apikey only.
     if (serviceKey.startsWith("eyJ")) headers.Authorization = `Bearer ${serviceKey}`;
 
-    const getOne = async <T>(path: string): Promise<T | null> => {
+    const getRows = async <T>(path: string): Promise<T[]> => {
       const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, { headers });
       if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 300)}`);
-      const rows = (await res.json()) as T[];
-      return rows[0] ?? null;
+      return (await res.json()) as T[];
     };
+    const getOne = async <T>(path: string): Promise<T | null> => (await getRows<T>(path))[0] ?? null;
 
     let question: QuestionRow | null;
     let series: SeriesRow | null = null;
@@ -120,10 +134,25 @@ export function createHandler({ env, fetch, log = console }: Deps) {
       return json(502, { error: "database lookup failed" });
     }
 
-    // 5. Recipients by series kind.
-    const to = recipientsFor(series?.kind ?? null, env);
+    // 5. Recipients: the people assigned to this question's series, with their
+    //    current Words email, skipping anyone removed. If none remain (or the
+    //    lookup fails), fall back to NOTIFY_TO so the question is not missed.
+    let assigned: string[] = [];
+    if (question.series_id != null) {
+      try {
+        assigned = assignedEmails(
+          await getRows<RecipientRow>(
+            `series_recipients?series_id=eq.${question.series_id}&select=person(email,removed_at)`,
+          ),
+        );
+      } catch (error) {
+        log.error("Could not read the series' pastors; falling back to NOTIFY_TO:", error);
+      }
+    }
+    const to = assigned.length ? assigned : parseRecipients(env("NOTIFY_TO"));
+    const source = assigned.length ? "series pastors" : "NOTIFY_TO";
     if (!to.length) {
-      log.error(`No recipients configured for kind "${series?.kind ?? "none"}" (and NOTIFY_TO is empty).`);
+      log.error(`Question ${question.id}: no pastors assigned to its series and NOTIFY_TO is empty.`);
       return json(500, { error: "no recipients configured" });
     }
 
@@ -154,7 +183,9 @@ export function createHandler({ env, fetch, log = console }: Deps) {
     }
 
     const sent = (await res.json().catch(() => ({}))) as { id?: string };
-    log.info(`Notified ${to.length} recipient(s) about question ${question.id} (resend id ${sent.id ?? "?"}).`);
-    return json(200, { ok: true, question: question.id, recipients: to.length });
+    log.info(
+      `Notified ${to.length} recipient(s) (${source}) about question ${question.id} (resend id ${sent.id ?? "?"}).`,
+    );
+    return json(200, { ok: true, question: question.id, recipients: to.length, source });
   };
 }

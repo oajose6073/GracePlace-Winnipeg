@@ -1,13 +1,16 @@
--- Access test for the series / series_questions / admins rules.
+-- Access test for the series / series_questions / admins rules, and, once
+-- 20261125120000_series_recipients.sql has been run, for series_recipients
+-- and ask_pastor_candidates().
 --
--- Run AFTER the migration, in the Supabase SQL editor or with psql.
+-- Run AFTER the migrations, in the Supabase SQL editor or with psql.
 --
 -- Everything happens inside one DO block that always ends by raising an
--- exception, so every row it creates (test users, series, a question) is
--- rolled back, on any database, every time. The exception message is the
--- report:
---     RLS TEST PASSED: 24 checks ...   (expected, nothing was changed)
+-- exception, so every row it creates (test users, series, a question,
+-- recipients) is rolled back, on any database, every time. The exception
+-- message is the report:
+--     RLS TEST PASSED: N checks ...    (expected, nothing was changed)
 --     RLS TEST FAILED: ...             (lists each failing check)
+-- N is 24 before the recipients migration and 44 after it.
 --
 -- Each check runs as a database role the way the Supabase API runs a request:
 -- SET ROLE anon/authenticated plus the JWT claims auth.uid() reads.
@@ -29,6 +32,12 @@ declare
   member_id    uuid := gen_random_uuid();
   admin_email  text := 'rls-test-admin-'  || admin_id  || '@example.invalid';
   member_email text := 'rls-test-member-' || member_id || '@example.invalid';
+  removed_email text := 'rls-test-removed-' || gen_random_uuid() || '@example.invalid';
+  admin_person  uuid;
+  member_person uuid;
+  congregation  uuid;
+  has_recipients boolean := to_regclass('public.series_recipients') is not null
+                            and to_regprocedure('public.ask_pastor_candidates()') is not null;
   active_id   bigint;
   inactive_id bigint;
   question_id text;
@@ -44,8 +53,10 @@ begin
   -- Words member list first, so its sign-up trigger accepts the test users.
   -- Dynamic SQL so the test also runs on a database without Words.
   if to_regclass('public.person') is not null then
-    execute 'insert into public.person (name, email) values ($1, $2), ($3, $4)'
-      using 'RLS test admin', admin_email, 'RLS test member', member_email;
+    execute 'insert into public.person (name, email) values ($1, $2) returning id'
+      into admin_person using 'RLS test admin', admin_email;
+    execute 'insert into public.person (name, email) values ($1, $2) returning id'
+      into member_person using 'RLS test member', member_email;
   end if;
 
   insert into auth.users (id, email, aud, role) values
@@ -59,6 +70,32 @@ begin
     values ('RLS test inactive', 'wednesday', false) returning id into inactive_id;
   insert into public.series_questions (series_id, question)
     values (active_id, 'RLS test question') returning id::text into question_id;
+
+  if has_recipients then
+    -- The member is assigned to the active series; a removed person exists.
+    execute 'insert into public.series_recipients (series_id, person_id) values ($1, $2)'
+      using active_id, member_person;
+    execute 'insert into public.person (name, email, removed_at) values ($1, $2, now())'
+      using 'RLS test removed', removed_email;
+    execute 'select id from public.person where is_congregation limit 1' into congregation;
+
+    -- The function's shape: exactly these four columns, security definer,
+    -- search_path pinned.
+    if pg_get_function_result('public.ask_pastor_candidates()'::regprocedure)
+       <> 'TABLE(id uuid, name text, email text, is_church_admin boolean)' then
+      failures := failures || ('ask_pastor_candidates() returns '
+        || pg_get_function_result('public.ask_pastor_candidates()'::regprocedure));
+    else
+      passed := passed + 1;
+    end if;
+    if not exists (select 1 from pg_proc
+                   where oid = 'public.ask_pastor_candidates()'::regprocedure
+                     and prosecdef and proconfig @> array['search_path=""']) then
+      failures := failures || 'ask_pastor_candidates() is not security definer with search_path pinned'::text;
+    else
+      passed := passed + 1;
+    end if;
+  end if;
 
   -- Checks -------------------------------------------------------------------
   -- expect: 'rows=N' (statement succeeded and touched/returned N rows)
@@ -117,6 +154,50 @@ begin
       ('admin', 'can rename and activate a series',
          format('update public.series set name = %L, active = true where id = %s', 'renamed', inactive_id), 'rows=1')
     ) as t(who, label, q, expect)
+    -- series_recipients and ask_pastor_candidates(), once that migration ran
+    union all
+    select * from (values
+      -- signed in, NOT an admin
+      ('member', 'cannot read series recipients',
+         'select * from public.series_recipients', 'rows=0'),
+      ('member', 'cannot add a recipient',
+         format('insert into public.series_recipients (series_id, person_id) values (%s, %L)', inactive_id, member_person), 'refused'),
+      ('member', 'cannot remove a recipient',
+         'delete from public.series_recipients', 'rows=0'),
+      ('member', 'cannot change a recipient',
+         format('update public.series_recipients set series_id = %s', inactive_id), 'refused'),
+      ('member', 'cannot call ask_pastor_candidates()',
+         'select * from public.ask_pastor_candidates()', 'refused'),
+      -- anon
+      ('anon', 'cannot read series recipients',
+         'select * from public.series_recipients', 'refused'),
+      ('anon', 'cannot add a recipient',
+         format('insert into public.series_recipients (series_id, person_id) values (%s, %L)', active_id, admin_person), 'refused'),
+      ('anon', 'cannot remove recipients',
+         'delete from public.series_recipients', 'refused'),
+      ('anon', 'cannot call ask_pastor_candidates()',
+         'select * from public.ask_pastor_candidates()', 'refused'),
+      -- admin: positive controls
+      ('admin', 'can read the test recipient',
+         format('select * from public.series_recipients where series_id = %s', active_id), 'rows=1'),
+      ('admin', 'can add a recipient',
+         format('insert into public.series_recipients (series_id, person_id) values (%s, %L)', inactive_id, admin_person), 'rows=1'),
+      ('admin', 'can remove a recipient',
+         format('delete from public.series_recipients where series_id = %s and person_id = %L', active_id, member_person), 'rows=1'),
+      ('admin', 'candidates include both test people',
+         format('select * from public.ask_pastor_candidates() where email in (%L, %L)', admin_email, member_email), 'rows=2'),
+      ('admin', 'candidates mark the church admin',
+         format('select * from public.ask_pastor_candidates() where email = %L and is_church_admin', admin_email), 'rows=1'),
+      ('admin', 'candidates mark the non-admin',
+         format('select * from public.ask_pastor_candidates() where email = %L and not is_church_admin', member_email), 'rows=1'),
+      ('admin', 'candidates exclude removed people',
+         format('select * from public.ask_pastor_candidates() where email = %L', removed_email), 'rows=0'),
+      ('admin', 'candidates exclude the whole-church placeholder',
+         format('select * from public.ask_pastor_candidates() where id = %L', congregation), 'rows=0'),
+      ('admin', 'still cannot change a recipient in place (delete and re-add instead)',
+         format('update public.series_recipients set series_id = %s', inactive_id), 'refused')
+    ) as r(who, label, q, expect)
+    where has_recipients
   loop
     begin
       perform set_config('request.jwt.claims', json_build_object(
